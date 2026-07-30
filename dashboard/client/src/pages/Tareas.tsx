@@ -10,6 +10,7 @@ import StatusBadge from '../components/StatusBadge';
 
 const STATUSES: TaskStatus[] = ['todo', 'in_progress', 'blocked', 'done'];
 const PRIORITY_LABEL: Record<TaskPriority, string> = { low: 'Baja', med: 'Media', high: 'Alta' };
+const STATUS_LABEL: Record<TaskStatus, string> = { todo: 'Pendiente', in_progress: 'En curso', blocked: 'Bloqueada', done: 'Hecha' };
 
 export default function Tareas() {
   const tasks = useTasks();
@@ -107,7 +108,7 @@ export default function Tareas() {
                 >
                   {STATUSES.map((s) => (
                     <option key={s} value={s}>
-                      {s}
+                      {STATUS_LABEL[s]}
                     </option>
                   ))}
                 </select>
