@@ -9,6 +9,7 @@ import GranjaDetail from './pages/GranjaDetail';
 import Jugadores from './pages/Jugadores';
 import Proyectos from './pages/Proyectos';
 import ProyectoDetail from './pages/ProyectoDetail';
+import Galeria from './pages/Galeria';
 
 export default function App() {
   return (
@@ -23,7 +24,7 @@ export default function App() {
           <Route path="/jugadores" element={<Jugadores />} />
           <Route path="/proyectos" element={<Proyectos />} />
           <Route path="/proyectos/:id" element={<ProyectoDetail />} />
-          <Route path="/galeria" element={<div>Galería (Task 18)</div>} />
+          <Route path="/galeria" element={<Galeria />} />
         </Route>
       </Route>
     </Routes>
