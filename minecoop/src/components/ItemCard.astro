@@ -1,0 +1,27 @@
+---
+import { Image } from 'astro:assets';
+
+interface Props {
+  href: string;
+  image?: ImageMetadata;
+  alt: string;
+  title: string;
+}
+const { href, image, alt, title } = Astro.props;
+---
+
+<a
+  href={href}
+  class="group block overflow-hidden rounded-lg border border-border bg-surface transition-all hover:border-accent hover:shadow-md hover:shadow-black/40"
+>
+  {image ? (
+    <Image
+      src={image}
+      alt={alt}
+      class="aspect-[4/3] w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+    />
+  ) : (
+    <div class="aspect-[4/3] w-full bg-surface-2" aria-hidden="true" />
+  )}
+  <p class="p-2 text-sm font-medium">{title}</p>
+</a>

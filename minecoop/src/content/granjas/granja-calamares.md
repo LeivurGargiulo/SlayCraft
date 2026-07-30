@@ -1,0 +1,4 @@
+---
+images:
+  - ./img/granja.webp
+---

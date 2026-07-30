@@ -1,0 +1,74 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ItemCard from '../../components/ItemCard.astro';
+import CustomSelect from '../../components/CustomSelect.astro';
+import { getEntry } from 'astro:content';
+import { getGranjas } from '../../lib/granjas';
+import { getTareas } from '../../lib/tareas';
+
+const allTareas = await getTareas();
+const rawGranjas = (await getGranjas()).sort((a, b) => a.title.localeCompare(b.title));
+const granjas = await Promise.all(
+  rawGranjas.map(async (g) => {
+    const entry = await getEntry('granjas', g.id);
+    const related = allTareas.filter((t) => t.granjas?.includes(g.id));
+    const topPriority = related.length > 0 ? Math.min(...related.map((t) => t.priority)) : undefined;
+    return { granja: g, image: entry?.data.images[0], taskCount: related.length, topPriority };
+  })
+);
+---
+
+<BaseLayout title="Granjas">
+  <p class="label-pixel text-granjas">Granjas</p>
+  <h1 class="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Granjas</h1>
+  <p class="mt-2 text-text-muted">Granjas automáticas del servidor.</p>
+
+  <div class="mt-4">
+    <CustomSelect
+      id="sort-granjas"
+      options={[
+        { value: 'alpha', label: 'Ordenar: alfabético' },
+        { value: 'tareas', label: 'Más tareas pendientes' },
+        { value: 'priority', label: 'Mayor prioridad' },
+      ]}
+    />
+  </div>
+
+  <ul id="granjas-list" data-stagger class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3">
+    {
+      granjas.map(({ granja, image, taskCount, topPriority }) => (
+        <li data-title={granja.title} data-task-count={taskCount} data-top-priority={topPriority ?? 99}>
+          <ItemCard
+            href={`/granjas/${granja.id}`}
+            id={granja.id}
+            image={image}
+            alt={granja.title}
+            title={granja.title}
+            section="granjas"
+            taskCount={taskCount}
+            topPriority={topPriority}
+          />
+        </li>
+      ))
+    }
+  </ul>
+</BaseLayout>
+
+<script>
+  import { alphaComparator, countDescComparator, priorityAscComparator, sortListBy } from '../../scripts/list-sort.js';
+  import { initCustomSelects } from '../../scripts/custom-select.js';
+
+  document.addEventListener('astro:page-load', () => {
+    initCustomSelects();
+    const select = document.getElementById('sort-granjas');
+    const list = document.getElementById('granjas-list');
+    const comparators = {
+      alpha: alphaComparator('title'),
+      tareas: countDescComparator('taskCount'),
+      priority: priorityAscComparator('topPriority'),
+    };
+    select?.addEventListener('change', () => sortListBy(list, select.value, comparators));
+  });
+</script>

@@ -1,0 +1,73 @@
+plugins {
+	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+repositories {
+	// The fabric-carpet build pinned in gradle.properties (matching the exact jar already
+	// running on the real target server) isn't published under this coordinate on the Carpet
+	// maven, so it's vendored in libs/ and added as a local file dependency below. This repo
+	// is kept so the coordinate resolves cleanly if a published build is substituted later.
+	maven {
+		name = 'Carpet'
+		url = 'https://masa.dy.fi/maven'
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	modImplementation files("libs/fabric-carpet-${project.carpet_version}.jar")
+	implementation "org.xerial:sqlite-jdbc:${project.sqlite_jdbc_version}"
+	include "org.xerial:sqlite-jdbc:${project.sqlite_jdbc_version}"
+
+	testImplementation platform("org.junit:junit-bom:5.10.2")
+	testImplementation "org.junit.jupiter:junit-jupiter"
+	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+test {
+	useJUnitPlatform()
+}
+
+// SqliteHistoryStore relies on the sqlite-jdbc driver being on the runtime classpath, which is
+// true in tests (regular dependency) but was NOT true on the real deployed jar until sqlite-jdbc
+// was also declared with `include` above - Loom only bundles `include`d dependencies as nested
+// jars under META-INF/jars. Unit tests can't catch that regression since they never inspect the
+// built artifact, so verify it directly here.
+tasks.register('verifyBundledJars') {
+	dependsOn remapJar
+	doLast {
+		def jarFile = remapJar.archiveFile.get().asFile
+		new java.util.zip.ZipFile(jarFile).withCloseable { zip ->
+			if (zip.getEntry("META-INF/jars/sqlite-jdbc-${project.sqlite_jdbc_version}.jar") == null) {
+				throw new GradleException(
+					"sqlite-jdbc is not bundled in ${jarFile.name}; it must be declared via the " +
+					"'include' configuration so the JDBC driver is present at runtime on a real server")
+			}
+		}
+	}
+}
+check.dependsOn verifyBundledJars

@@ -1,0 +1,16 @@
+{
+  "farms": [
+    {
+      "id": "iron",
+      "name": "Iron Farm",
+      "dimension": "minecraft:overworld",
+      "anchor": { "x": 120, "y": 80, "z": -500 },
+      "entityScanRadius": 32,
+      "fakePlayerName": "Worker-Iron",
+      "storage": [
+        { "id": "main-chest", "label": "Main output", "position": { "x": 123, "y": 79, "z": -501 } },
+        { "id": "overflow", "label": "Overflow barrel", "position": { "x": 124, "y": 79, "z": -501 } }
+      ]
+    }
+  ]
+}

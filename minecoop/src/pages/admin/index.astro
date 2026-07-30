@@ -1,0 +1,49 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { isAdmin } from '../../lib/admin-auth';
+import { getTareas } from '../../lib/tareas';
+import { getGranjas } from '../../lib/granjas';
+import { getProyectos } from '../../lib/proyectos';
+import { getJugadores } from '../../lib/jugadores';
+
+if (!isAdmin(Astro.cookies)) return Astro.redirect('/admin/login');
+
+const [tareas, granjas, proyectos, jugadores] = await Promise.all([
+  getTareas(),
+  getGranjas(),
+  getProyectos(),
+  getJugadores(),
+]);
+
+const sections = [
+  { href: '/admin/tareas', label: 'Tareas', count: tareas.length },
+  { href: '/admin/granjas', label: 'Granjas', count: granjas.length },
+  { href: '/admin/proyectos', label: 'Proyectos', count: proyectos.length },
+  { href: '/admin/jugadores', label: 'Jugadores', count: jugadores.length },
+];
+---
+
+<BaseLayout title="Admin">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-semibold">Panel de administración</h1>
+    <form method="POST" action="/api/admin/logout">
+      <button type="submit" class="text-sm text-accent hover:underline">Cerrar sesión</button>
+    </form>
+  </div>
+
+  <ul class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+    {sections.map((s) => (
+      <li>
+        <a
+          href={s.href}
+          class="block rounded-lg border border-border bg-surface p-4 transition-colors hover:border-accent"
+        >
+          <p class="text-2xl font-semibold">{s.count}</p>
+          <p class="text-sm text-text-muted">{s.label}</p>
+        </a>
+      </li>
+    ))}
+  </ul>
+</BaseLayout>

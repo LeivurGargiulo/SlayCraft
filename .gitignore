@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+build/
+dist/
+classes/
+out/
+bin/
+mod/build/
+mod/run/
+mod/.gradle/
+.gradle/
+*.class
+*.jar
+
+# IDE and Editor
+.idea/
+.vscode/
+.classpath
+.project
+.settings/
+.superpowers/
+*.iml
+*.ipr
+*.iws
+*.launch
+
+# Environment
+.env
+.env.production
+.netlify
+
+# macOS
+.DS_Store
+*.DS_Store
+
+# Java/JVM
+hs_err_*.log
+*.hprof
+*.jfr
+
+# Logs and replays
+replay_*.log
+npm-debug.log
+
+# Generated
+.astro/
+
+# Server directories
+servers/
+
+# Local development
+run/

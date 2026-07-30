@@ -1,0 +1,32 @@
+# Which monitors run during a farm scan. Omit to enable all four (default).
+monitors:
+  - storage
+  - entities
+  - workers
+  - chunks
+
+server:
+  host: 192.168.0.141
+  port: 25564
+  version: '1.21.11'
+  # Observed real disconnects at minecraft-protocol's hardcoded 30s keep-alive tolerance
+  # (likely tick lag from the 127-mod server, possibly worsened by the very farms MFO
+  # watches). Set well above the schema's own 60s default to give real headroom.
+  keepAliveTimeoutMs: 120000
+
+bot:
+  username: MFO-Manager
+  auth: microsoft
+
+reconnect:
+  enabled: true
+  initialDelayMs: 5000
+  maxDelayMs: 60000
+
+scan:
+  enabled: true
+  intervalMs: 300000
+
+api:
+  host: 0.0.0.0
+  port: 3000

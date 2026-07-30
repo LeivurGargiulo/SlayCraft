@@ -1,0 +1,1177 @@
+# Minecraft Farm Observatory (MFO)
+
+## Technical Architecture Specification v1.0
+
+---
+
+# 1. Project Overview
+
+## Purpose
+
+Minecraft Farm Observatory (MFO) is a **read-only observability platform** for technical Fabric servers.
+
+It is **not** an automation mod.
+
+Its purpose is identical to infrastructure observability tools (Prometheus, Grafana, ELK):
+
+* Observe
+* Collect metrics
+* Store historical data
+* Detect anomalies
+* Alert operators
+* Visualize system state
+
+Gameplay is never modified.
+
+---
+
+# 2. Design Principles
+
+## Read Only
+
+The manager must never modify world state.
+
+Allowed actions:
+
+* teleport
+* rotate camera
+* open inventories
+* inspect inventories
+* inspect entities
+* inspect blocks
+* read chunks
+* capture screenshots
+* receive packets
+
+Forbidden actions:
+
+* block breaking
+* placing blocks
+* dropping items
+* moving items
+* clicking inventory slots
+* crafting
+* attacking
+* eating
+* trading
+* activating blocks
+
+Any feature violating this principle is out of scope.
+
+---
+
+## Configuration Driven
+
+Nothing is hardcoded.
+
+Everything is defined by configuration.
+
+Examples
+
+* farms
+* storage
+* cameras
+* alerts
+* dashboard
+* discord
+* workers
+
+---
+
+## Event Driven
+
+Subsystems never directly call each other.
+
+Everything communicates through an Event Bus.
+
+Example
+
+```
+StorageScanner
+
+↓
+
+ContainerScanned Event
+
+↓
+
+Metrics Service
+
+↓
+
+Health Service
+
+↓
+
+Alert Service
+
+↓
+
+Discord
+```
+
+No service knows who consumes its events.
+
+---
+
+## Plugin Based
+
+Every monitor is independently pluggable.
+
+Example
+
+```
+StorageMonitor
+
+EntityMonitor
+
+ChunkMonitor
+
+WorkerMonitor
+
+VillagerMonitor
+
+ProductionMonitor
+
+ScreenshotMonitor
+```
+
+Each implements a common interface.
+
+---
+
+# 3. System Context
+
+```
+                   Discord
+
+                      │
+
+               Discord Adapter
+
+                      │
+
+                  Event Bus
+
+                      │
+
+      ┌────────────────────────────────┐
+
+      │
+
+ Mineflayer Manager
+
+      │
+
+      └────────────────────────────────┘
+
+             │
+
+      Minecraft Server
+
+             │
+
+ Carpet Workers
+```
+
+---
+
+# 4. Runtime Components
+
+## Manager
+
+Singleton.
+
+Responsibilities
+
+* teleport
+* inspect
+* execute scan jobs
+* expose camera
+* capture screenshots
+
+No business logic.
+
+Manager is simply an execution engine.
+
+---
+
+## Scheduler
+
+Owns manager movement.
+
+Input:
+
+```
+Scan Farm
+
+Take Screenshot
+
+Inspect Storage
+
+Verify Worker
+
+Entity Scan
+```
+
+Output
+
+```
+Teleport
+
+Execute
+
+Return Result
+```
+
+Manager never decides what to do.
+
+Scheduler decides.
+
+---
+
+## Farm Registry
+
+Loads
+
+```
+farms.yml
+```
+
+Produces
+
+```
+FarmDefinition
+```
+
+Immutable after startup.
+
+Hot reload optional.
+
+---
+
+## Event Bus
+
+Central communication mechanism.
+
+Implementation
+
+```
+Node EventEmitter
+
+or
+
+RxJS Subject
+```
+
+No direct service dependencies.
+
+---
+
+## Storage Service
+
+Responsibilities
+
+* inventory parsing
+* nested shulker parsing
+* fill percentage
+* delta calculation
+
+No alert logic.
+
+---
+
+## Production Service
+
+Consumes
+
+```
+ContainerSnapshots
+```
+
+Produces
+
+```
+ProductionMetrics
+```
+
+Example
+
+```
+previous
+
+1000 carrots
+
+current
+
+1240 carrots
+
+↓
+
+delta
+
+240
+
+↓
+
+240/min
+
+↓
+
+14,400/hour
+```
+
+---
+
+## Health Service
+
+Consumes
+
+Everything.
+
+Produces
+
+```
+FarmHealth
+```
+
+Health is deterministic.
+
+Never manually assigned.
+
+---
+
+## Alert Service
+
+Consumes
+
+Health
+
+Metrics
+
+Events
+
+Produces
+
+```
+AlertOpened
+
+AlertClosed
+
+AlertAcknowledged
+```
+
+---
+
+## Persistence
+
+Consumes
+
+Everything.
+
+Writes
+
+SQLite.
+
+No business logic.
+
+---
+
+## Dashboard API
+
+Consumes
+
+Database
+
+WebSocket Events
+
+Never communicates with Minecraft.
+
+---
+
+# 5. Domain Model
+
+## Farm
+
+```
+Farm
+
+id
+
+name
+
+dimension
+
+teleport
+
+worker
+
+containers
+
+cameras
+
+settings
+```
+
+---
+
+## Worker
+
+```
+Worker
+
+id
+
+carpetName
+
+expectedPosition
+
+dimension
+
+status
+
+lastSeen
+```
+
+---
+
+## Camera
+
+```
+Camera
+
+id
+
+farmId
+
+position
+
+yaw
+
+pitch
+
+fov
+
+description
+```
+
+---
+
+## Container
+
+```
+Container
+
+id
+
+farmId
+
+type
+
+position
+
+capacity
+```
+
+---
+
+## Snapshot
+
+```
+Snapshot
+
+containerId
+
+timestamp
+
+items
+
+fill
+
+hash
+```
+
+---
+
+## Metric
+
+```
+Metric
+
+farmId
+
+timestamp
+
+production
+
+storage
+
+health
+```
+
+---
+
+## Alert
+
+```
+Alert
+
+id
+
+farm
+
+type
+
+severity
+
+state
+
+opened
+
+closed
+
+screenshot
+```
+
+---
+
+# 6. Scheduler
+
+Priority Queue.
+
+```
+CRITICAL
+
+Verify Alert
+
+Reconnect
+
+────────────
+
+HIGH
+
+Discord Command
+
+────────────
+
+NORMAL
+
+Farm Scan
+
+────────────
+
+LOW
+
+Periodic Screenshot
+```
+
+Scheduling Strategy
+
+```
+FIFO
+
+inside
+
+priority level
+```
+
+Only one manager exists.
+
+Therefore
+
+One active job.
+
+Queue required.
+
+---
+
+# 7. Scan Pipeline
+
+```
+Scheduler
+
+↓
+
+Teleport
+
+↓
+
+Wait Chunk Load
+
+↓
+
+Verify Position
+
+↓
+
+Run Monitors
+
+↓
+
+Aggregate Results
+
+↓
+
+Store Database
+
+↓
+
+Publish Events
+
+↓
+
+Next Job
+```
+
+---
+
+# 8. Monitor Interface
+
+```
+interface Monitor {
+
+    id: string
+
+    supports(farm): boolean
+
+    execute(context): Promise<Result>
+
+}
+```
+
+Context
+
+```
+Manager
+
+Farm
+
+Database
+
+Configuration
+
+Logger
+```
+
+Result
+
+```
+events
+
+metrics
+
+alerts
+
+attachments
+```
+
+---
+
+# 9. Event Model
+
+All events immutable.
+
+Examples
+
+```
+ManagerConnected
+
+ManagerDisconnected
+
+ManagerTeleported
+
+ContainerScanned
+
+ContainerChanged
+
+StorageUpdated
+
+ProductionUpdated
+
+WorkerVerified
+
+WorkerMissing
+
+ChunkLoaded
+
+ChunkUnloaded
+
+EntityDetected
+
+UnknownPlayerDetected
+
+FarmHealthChanged
+
+AlertOpened
+
+AlertResolved
+
+ScreenshotCaptured
+```
+
+---
+
+# 10. Database
+
+SQLite
+
+Normalized.
+
+```
+farms
+
+workers
+
+containers
+
+container_items
+
+snapshots
+
+metrics
+
+health
+
+alerts
+
+screenshots
+
+entities
+
+users
+
+sessions
+
+camera_presets
+```
+
+Indexes
+
+```
+timestamp
+
+farm
+
+container
+
+alert
+
+worker
+```
+
+---
+
+# 11. Storage Scanning
+
+Supported
+
+* Chest
+
+* Double Chest
+
+* Barrel
+
+* Shulker
+
+* Nested Shulker
+
+Scanner produces
+
+```
+capacity
+
+occupied
+
+fill %
+
+item counts
+
+nested counts
+
+hash
+```
+
+Hash used for delta detection.
+
+---
+
+# 12. Production Algorithm
+
+For every scan
+
+```
+Current Snapshot
+
+↓
+
+Compare Previous Snapshot
+
+↓
+
+Difference
+
+↓
+
+Normalize Time
+
+↓
+
+Rolling Average
+
+↓
+
+Persist
+```
+
+No assumptions about farm type.
+
+Production inferred only from storage.
+
+---
+
+# 13. Health Algorithm
+
+Health inputs
+
+```
+Worker
+
+Storage
+
+Production
+
+Chunks
+
+Entities
+
+Manager
+
+Connectivity
+```
+
+Decision tree
+
+```
+Manager Offline
+
+↓
+
+UNKNOWN
+
+else
+
+Worker Missing
+
+↓
+
+CRITICAL
+
+else
+
+Chunk Missing
+
+↓
+
+CRITICAL
+
+else
+
+Storage Full
+
+↓
+
+WARNING
+
+else
+
+Output Zero
+
+↓
+
+WARNING
+
+else
+
+Healthy
+```
+
+Configurable.
+
+---
+
+# 14. Screenshot Pipeline
+
+```
+Teleport
+
+↓
+
+Camera
+
+↓
+
+Rotate
+
+↓
+
+Wait
+
+↓
+
+Capture
+
+↓
+
+PNG
+
+↓
+
+Persist
+
+↓
+
+Publish
+```
+
+Consumers
+
+* Alerts
+
+* Dashboard
+
+* Discord
+
+---
+
+# 15. Prismarine Viewer
+
+Single instance.
+
+Current manager position determines live stream.
+
+Dashboard
+
+```
+Camera Click
+
+↓
+
+Queue Teleport
+
+↓
+
+Viewer Updates
+```
+
+---
+
+# 16. Discord Adapter
+
+Commands converted into Jobs.
+
+Example
+
+```
+/camera iron overview
+
+↓
+
+Create Screenshot Job
+
+↓
+
+Scheduler
+
+↓
+
+Result
+
+↓
+
+Discord Reply
+```
+
+Discord never accesses Mineflayer directly.
+
+---
+
+# 17. REST API
+
+Read-only.
+
+```
+GET
+
+/farms
+
+/farms/{id}
+
+/metrics
+
+/alerts
+
+/screenshots
+
+/cameras
+
+/workers
+
+/manager
+```
+
+Commands
+
+```
+POST
+
+/camera
+
+/scan
+
+/reconnect
+```
+
+---
+
+# 18. Configuration Layout
+
+```
+config/
+
+farms.yml
+
+workers.yml
+
+alerts.yml
+
+manager.yml
+
+database.yml
+
+discord.yml
+
+dashboard.yml
+
+logging.yml
+```
+
+Validation
+
+```
+Zod
+
+↓
+
+Runtime Types
+
+↓
+
+Internal Models
+```
+
+---
+
+# 19. Folder Layout
+
+```
+src/
+
+app/
+  bootstrap.ts
+
+core/
+  scheduler/
+  event-bus/
+  registry/
+  config/
+  logger/
+
+manager/
+  connection/
+  teleport/
+  camera/
+  screenshot/
+  inventory/
+
+monitors/
+  storage/
+  production/
+  workers/
+  chunks/
+  entities/
+  health/
+
+services/
+  metrics/
+  alerts/
+  persistence/
+
+integrations/
+  discord/
+  prismarine/
+  carpet/
+
+api/
+  rest/
+  websocket/
+
+dashboard/
+
+database/
+
+shared/
+  models/
+  dto/
+  types/
+  utils/
+
+tests/
+```
+
+---
+
+# 20. Recommended Tech Stack
+
+| Layer            | Technology               |
+| ---------------- | ------------------------ |
+| Runtime          | Node.js 22 LTS           |
+| Language         | TypeScript (strict mode) |
+| Package Manager  | pnpm                     |
+| ORM              | Drizzle ORM              |
+| Database         | SQLite                   |
+| Config           | YAML + Zod               |
+| Logging          | Pino                     |
+| REST             | Fastify                  |
+| WebSocket        | Socket.IO                |
+| Dashboard        | React + Vite + Mantine   |
+| Charts           | Apache ECharts           |
+| Minecraft        | Mineflayer               |
+| Camera           | Prismarine Viewer        |
+| Testing          | Vitest                   |
+| Linting          | ESLint + Prettier        |
+| Containerization | Docker + Docker Compose  |
+
+# 21. Coding Standards
+
+* Enable `strict`, `noUncheckedIndexedAccess`, and `exactOptionalPropertyTypes` in TypeScript.
+* Use dependency injection for services; avoid global singletons except the application bootstrap.
+* Separate domain models from persistence models (don't expose ORM entities directly).
+* All configuration should be validated at startup with descriptive errors.
+* Every asynchronous task should support cancellation (e.g., `AbortSignal`) so the scheduler can interrupt or reprioritize work.
+* Use structured logging with correlation IDs (e.g., one ID per scheduled job) to trace operations across components.
+* Design monitors to be idempotent: rerunning a scan should not produce side effects beyond duplicate observations.
+
+# 22. Future Extensibility
+
+The system should support additional monitor plugins without changes to the scheduler or core event bus. Examples include:
+
+* Villager population and workstation validation
+* Beacon status monitoring
+* Redstone power state sampling
+* Mob-cap monitoring
+* Hopper throughput analysis
+* Dimension-level statistics
+* Server TPS and MSPT integration
+* Prometheus metrics exporter
+
+The core should remain stable while new observability modules are added as independent plugins implementing the common monitor interface. This keeps the project maintainable and scalable as the technical server evolves.

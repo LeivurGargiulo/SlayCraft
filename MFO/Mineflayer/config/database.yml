@@ -1,0 +1,8 @@
+path: data/mfo.sqlite
+
+# Periodic better-sqlite3 .backup() to a local directory, pruning down to retainCount files.
+backup:
+  enabled: true
+  intervalMs: 21600000 # 6 hours
+  directory: data/backups
+  retainCount: 7

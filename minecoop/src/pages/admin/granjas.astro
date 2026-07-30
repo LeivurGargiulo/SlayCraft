@@ -1,0 +1,88 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import GranjaForm from '../../components/GranjaForm.astro';
+import { isAdmin } from '../../lib/admin-auth';
+import { getGranjas } from '../../lib/granjas';
+
+if (!isAdmin(Astro.cookies)) return Astro.redirect('/admin/login');
+
+const granjas = (await getGranjas()).sort((a, b) => a.title.localeCompare(b.title));
+---
+
+<BaseLayout title="Admin · Granjas">
+  <a href="/admin" class="text-sm text-text-muted hover:text-accent">← Admin</a>
+  <h1 class="mt-2 text-2xl font-semibold">
+    Granjas <span class="font-mono text-sm font-normal text-text-muted">({granjas.length})</span>
+  </h1>
+
+  <details class="mt-4 rounded border border-border p-3">
+    <summary class="cursor-pointer text-sm font-medium">+ Nueva granja</summary>
+    <div class="mt-3">
+      <GranjaForm mode="create" />
+    </div>
+  </details>
+
+  <ul class="mt-6 flex flex-col divide-y divide-border border-t border-b border-border">
+    {granjas.map((g) => (
+      <li class="py-3">
+        <p class="font-medium">{g.title}</p>
+        <div class="mt-2 flex items-center gap-3">
+          <details>
+            <summary class="cursor-pointer text-xs text-accent">Editar</summary>
+            <div class="mt-2">
+              <GranjaForm mode="edit" granja={g} />
+            </div>
+          </details>
+          <button type="button" data-delete-granja data-id={g.id} class="text-xs text-red-500 hover:underline">
+            Eliminar
+          </button>
+        </div>
+      </li>
+    ))}
+    {granjas.length === 0 && <li class="py-3 text-sm text-text-muted">Sin granjas.</li>}
+  </ul>
+</BaseLayout>
+
+<script>
+  function reloadAfterWrite() {
+    setTimeout(() => location.reload(), 1500);
+  }
+
+  function buildPayload(form) {
+    const title = form.querySelector('[name="title"]').value.trim();
+    const coordinates = form.querySelector('[name="coordinates"]').value
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return { title, coordinates };
+  }
+
+  document.addEventListener('click', (e) => {
+    const deleteBtn = e.target.closest('[data-delete-granja]');
+    if (deleteBtn) {
+      if (!confirm('¿Eliminar esta granja?')) return;
+      fetch(`/api/admin/granjas/${deleteBtn.dataset.id}`, { method: 'DELETE' }).then((res) => {
+        if (res.ok) reloadAfterWrite();
+        else alert('Error al eliminar la granja.');
+      });
+    }
+  });
+
+  document.addEventListener('submit', (e) => {
+    const form = e.target.closest('[data-granja-form]');
+    if (!form) return;
+    e.preventDefault();
+    const payload = buildPayload(form);
+    const mode = form.dataset.mode;
+    const url = mode === 'create' ? '/api/admin/granjas' : `/api/admin/granjas/${form.dataset.id}`;
+    const method = mode === 'create' ? 'POST' : 'PATCH';
+    fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(
+      (res) => {
+        if (res.ok) reloadAfterWrite();
+        else alert('Error al guardar la granja.');
+      }
+    );
+  });
+</script>

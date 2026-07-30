@@ -1,0 +1,44 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CoordList from '../../components/CoordList.astro';
+import Gallery from '../../components/Gallery.astro';
+import RelatedTareas from '../../components/RelatedTareas.astro';
+import DetailHeader from '../../components/DetailHeader.astro';
+import { getEntry } from 'astro:content';
+import { getTareas } from '../../lib/tareas';
+import { getProyectos } from '../../lib/proyectos';
+
+const proyecto = (await getProyectos()).find((p) => p.id === Astro.params.slug);
+if (!proyecto) return new Response('Not found', { status: 404 });
+
+const imageEntry = await getEntry('proyectos', proyecto.id);
+
+const tareas = (await getTareas()).filter((t) => t.proyectos?.includes(proyecto.id));
+---
+
+<BaseLayout title={proyecto.title}>
+  <DetailHeader
+    backHref="/proyectos"
+    backLabel="Proyectos"
+    title={proyecto.title}
+    heroImage={imageEntry?.data.images[0]}
+    id={proyecto.id}
+    section="proyectos"
+  />
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-[2fr_1fr]">
+    <div>
+      {imageEntry && <Gallery images={imageEntry.data.images} alt={proyecto.title} parallax parallaxMax={16} />}
+    </div>
+
+    <aside class="relative overflow-hidden rounded-lg border border-proyectos/40 bg-surface p-4">
+      <div class="bg-voxel-grid pointer-events-none absolute inset-0 opacity-20" aria-hidden="true"></div>
+      <div class="relative">
+        <CoordList coordinates={proyecto.coordinates} />
+        <RelatedTareas tareas={tareas} />
+      </div>
+    </aside>
+  </div>
+</BaseLayout>

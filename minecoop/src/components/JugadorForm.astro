@@ -1,0 +1,39 @@
+---
+import type { Jugador } from '../lib/jugadores';
+import { ACTIVIDAD_LABELS, type Actividad } from '../data/jugadores';
+
+interface Props {
+  mode: 'create' | 'edit';
+  jugador?: Jugador;
+}
+const { mode, jugador } = Astro.props;
+const actividades: Actividad[] = ['activo', 'ocasional', 'inactivo'];
+---
+
+<form data-jugador-form data-mode={mode} data-username={jugador?.username ?? ''} class="flex flex-col gap-3 rounded border border-border p-3">
+  <label class="flex flex-col gap-1 text-sm">
+    Usuario (Minecraft)
+    <input
+      name="username"
+      required
+      value={jugador?.username ?? ''}
+      readonly={mode === 'edit'}
+      class="rounded border border-border bg-surface px-2 py-1.5 read-only:opacity-60"
+    />
+  </label>
+
+  <label class="flex flex-col gap-1 text-sm">
+    Actividad
+    <select name="actividad" class="rounded border border-border bg-surface px-2 py-1.5">
+      {actividades.map((a) => (
+        <option value={a} selected={(jugador?.actividad ?? 'activo') === a}>{ACTIVIDAD_LABELS[a]}</option>
+      ))}
+    </select>
+  </label>
+
+  <div class="mt-1 flex gap-2">
+    <button type="submit" class="rounded bg-accent px-3 py-1.5 text-sm font-medium text-bg">
+      {mode === 'create' ? 'Crear jugador' : 'Guardar cambios'}
+    </button>
+  </div>
+</form>

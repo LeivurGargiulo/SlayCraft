@@ -1,0 +1,17 @@
+services:
+  mfo:
+    build: .
+    image: mfo:latest
+    restart: unless-stopped
+    ports:
+      - '3000:3000' # REST API + WebSocket + dashboard
+      - '3001:3001' # Prismarine live viewer (config/manager.yml -> screenshots.port)
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set (see .env.example)}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+    volumes:
+      - ./config:/app/config:ro
+      - mfo-data:/app/data
+
+volumes:
+  mfo-data:

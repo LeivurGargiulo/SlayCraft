@@ -1,0 +1,6 @@
+export class TeleportError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TeleportError';
+  }
+}

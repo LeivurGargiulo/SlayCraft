@@ -1,0 +1,47 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ProjectCard from "../../components/ProjectCard.astro";
+import { getCollection } from "astro:content";
+
+const projects = (await getCollection("projects")).sort(
+  (a, b) => b.data.date.getTime() - a.data.date.getTime()
+);
+const authors = [...new Set(projects.map((p) => p.data.author))];
+const biomes = [...new Set(projects.map((p) => p.data.biome))];
+---
+<BaseLayout title="Proyectos" description="Estructuras construidas en la superficie de SlayCraft.">
+  <section class="mx-auto max-w-5xl px-4 py-10">
+    <p class="font-display text-xs text-accent">ESTRUCTURAS</p>
+    <h1 class="mt-2 font-body text-2xl text-text">Proyectos</h1>
+
+    <div class="mt-6 flex flex-wrap gap-3 font-mono text-sm">
+      <select data-filter-status class="rounded border border-border-strong bg-bg px-2 py-1 text-text">
+        <option value="">Todos los estados</option>
+        <option value="in-progress">En progreso</option>
+        <option value="completed">Completado</option>
+      </select>
+      <select data-filter-author class="rounded border border-border-strong bg-bg px-2 py-1 text-text">
+        <option value="">Todos los autores</option>
+        {authors.map((author) => <option value={author}>{author}</option>)}
+      </select>
+      <select data-filter-biome class="rounded border border-border-strong bg-bg px-2 py-1 text-text">
+        <option value="">Todos los biomas</option>
+        {biomes.map((biome) => <option value={biome}>{biome}</option>)}
+      </select>
+      <select data-sort class="rounded border border-border-strong bg-bg px-2 py-1 text-text">
+        <option value="date-desc">Más nuevo primero</option>
+        <option value="date-asc">Más viejo primero</option>
+        <option value="title-asc">Título (A-Z)</option>
+      </select>
+    </div>
+
+    <div data-project-grid class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {projects.map((project) => <ProjectCard project={project} />)}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { initProjectFilters } from "../../scripts/project-filters";
+  initProjectFilters();
+</script>

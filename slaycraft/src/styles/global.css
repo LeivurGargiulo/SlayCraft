@@ -1,0 +1,53 @@
+@import "tailwindcss";
+@source not "../../docs";
+
+:root,
+[data-theme="light"] {
+  --bg: #F5F1E3;
+  --surface: #F5F1E3;
+  --accent: #3D8B37;
+  --border-strong: #7A5230;
+  --info: #5C7A99;
+  --text: #2B2B2B;
+}
+
+[data-theme="dark"] {
+  --bg: #151515;
+  --surface: #1E1E1E;
+  --accent: #4A9EFF;
+  --border-strong: #8B6F47;
+  --info: #5C7A99;
+  --text: #E8E3D3;
+}
+
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-accent: var(--accent);
+  --color-border-strong: var(--border-strong);
+  --color-info: var(--info);
+  --color-text: var(--text);
+  --font-display: "Press Start 2P", cursive;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

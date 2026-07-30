@@ -1,0 +1,32 @@
+---
+import type { Proyecto } from '../lib/proyectos';
+
+interface Props {
+  mode: 'create' | 'edit';
+  proyecto?: Proyecto;
+}
+const { mode, proyecto } = Astro.props;
+---
+
+<form data-proyecto-form data-mode={mode} data-id={proyecto?.id ?? ''} class="flex flex-col gap-3 rounded border border-border p-3">
+  <label class="flex flex-col gap-1 text-sm">
+    Título
+    <input name="title" required value={proyecto?.title ?? ''} class="rounded border border-border bg-surface px-2 py-1.5" />
+  </label>
+
+  <label class="flex flex-col gap-1 text-sm">
+    Coordenadas (una por línea)
+    <textarea
+      name="coordinates"
+      rows="3"
+      placeholder="Spawn: 0, 0, 0"
+      class="rounded border border-border bg-surface px-2 py-1.5 font-mono text-sm"
+    >{(proyecto?.coordinates ?? []).join('\n')}</textarea>
+  </label>
+
+  <div class="mt-1 flex gap-2">
+    <button type="submit" class="rounded bg-accent px-3 py-1.5 text-sm font-medium text-bg">
+      {mode === 'create' ? 'Crear proyecto' : 'Guardar cambios'}
+    </button>
+  </div>
+</form>

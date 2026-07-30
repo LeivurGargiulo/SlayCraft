@@ -1,0 +1,36 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CoordList from '../../components/CoordList.astro';
+import Gallery from '../../components/Gallery.astro';
+import RelatedTareas from '../../components/RelatedTareas.astro';
+import { getEntry } from 'astro:content';
+import { getTareas } from '../../lib/tareas';
+import { getProyectos } from '../../lib/proyectos';
+
+const proyecto = (await getProyectos()).find((p) => p.id === Astro.params.slug);
+if (!proyecto) return new Response('Not found', { status: 404 });
+
+const imageEntry = await getEntry('proyectos', proyecto.id);
+
+const tareas = (await getTareas()).filter((t) => t.proyectos?.includes(proyecto.id));
+---
+
+<BaseLayout title={proyecto.title}>
+  <a href="/proyectos" class="text-sm text-text-muted hover:text-accent">← Proyectos</a>
+
+  <h1 class="mt-2 text-2xl font-semibold">{proyecto.title}</h1>
+
+  {imageEntry && (
+    <div class="mt-6">
+      <Gallery images={imageEntry.data.images} alt={proyecto.title} />
+    </div>
+  )}
+
+  <div class="mt-8">
+    <CoordList coordinates={proyecto.coordinates} />
+  </div>
+
+  <RelatedTareas tareas={tareas} />
+</BaseLayout>

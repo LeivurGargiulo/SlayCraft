@@ -1,0 +1,32 @@
+---
+import { Image } from "astro:assets";
+import type { CollectionEntry } from "astro:content";
+import StatusBadge from "./StatusBadge.astro";
+import { formatCoordinates } from "../lib/format";
+
+interface Props {
+  project: CollectionEntry<"projects">;
+}
+const { project } = Astro.props;
+const { title, author, biome, coordinates, status, coverImage, date } = project.data;
+---
+<a
+  href={`/proyectos/${project.id}`}
+  data-project-card
+  data-status={status}
+  data-author={author}
+  data-biome={biome}
+  data-date={date.toISOString()}
+  data-title={title}
+  class="block overflow-hidden rounded border border-border-strong bg-surface transition-transform hover:-translate-y-1"
+>
+  <Image src={coverImage} alt={title} width={400} height={250} class="h-40 w-full object-cover" />
+  <div class="space-y-1 p-3">
+    <div class="flex items-center justify-between gap-2">
+      <h3 class="font-body font-semibold text-text">{title}</h3>
+      <StatusBadge status={status} />
+    </div>
+    <p class="font-body text-sm text-info">{author} · {biome}</p>
+    <p class="font-mono text-xs text-text">{formatCoordinates(coordinates)}</p>
+  </div>
+</a>

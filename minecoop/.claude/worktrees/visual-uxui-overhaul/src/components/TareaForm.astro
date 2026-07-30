@@ -1,0 +1,131 @@
+---
+import type { Tarea } from '../lib/tareas';
+
+interface Props {
+  mode: 'create' | 'edit';
+  tarea?: Tarea;
+  jugadores: string[];
+  granjaOptions: { id: string; title: string }[];
+  proyectoOptions: { id: string; title: string }[];
+}
+
+const { mode, tarea, jugadores, granjaOptions, proyectoOptions } = Astro.props;
+const subtareas = tarea?.subtareas ?? [];
+---
+
+<form data-tarea-form data-mode={mode} data-id={tarea?.id ?? ''} class="flex flex-col gap-3 rounded border border-border p-3">
+  <datalist id="jugadores-list">
+    {jugadores.map((j) => <option value={j} />)}
+  </datalist>
+
+  <label class="flex flex-col gap-1 text-sm">
+    Título
+    <input name="title" required value={tarea?.title ?? ''} class="rounded border border-border bg-surface px-2 py-1.5" />
+  </label>
+
+  <div class="flex gap-3">
+    <label class="flex flex-1 flex-col gap-1 text-sm">
+      Estado
+      <select name="status" class="rounded border border-border bg-surface px-2 py-1.5">
+        <option value="pendiente" selected={(tarea?.status ?? 'pendiente') === 'pendiente'}>Pendiente</option>
+        <option value="en-progreso" selected={tarea?.status === 'en-progreso'}>En progreso</option>
+      </select>
+    </label>
+
+    <label class="flex flex-1 flex-col gap-1 text-sm">
+      Prioridad
+      <select name="priority" class="rounded border border-border bg-surface px-2 py-1.5">
+        {[0, 1, 2, 3, 4, 5].map((p) => (
+          <option value={p} selected={(tarea?.priority ?? 3) === p}>{p}</option>
+        ))}
+      </select>
+    </label>
+  </div>
+
+  <label class="flex flex-col gap-1 text-sm">
+    Jugador(es) asignado(s) (separados por coma)
+    <input
+      name="assignee"
+      list="jugadores-list"
+      value={(tarea?.assignee ?? []).join(', ')}
+      placeholder="usuario1, usuario2"
+      class="rounded border border-border bg-surface px-2 py-1.5"
+    />
+  </label>
+
+  <label class="flex flex-col gap-1 text-sm">
+    Notas
+    <textarea name="notes" class="rounded border border-border bg-surface px-2 py-1.5">{tarea?.notes ?? ''}</textarea>
+  </label>
+
+  <div class="flex gap-3">
+    <label class="flex flex-1 flex-col gap-1 text-sm">
+      Granjas vinculadas
+      <select name="granjas" multiple class="h-24 rounded border border-border bg-surface px-2 py-1.5">
+        {granjaOptions.map((g) => (
+          <option value={g.id} selected={tarea?.granjas?.includes(g.id)}>{g.title}</option>
+        ))}
+      </select>
+    </label>
+
+    <label class="flex flex-1 flex-col gap-1 text-sm">
+      Proyectos vinculados
+      <select name="proyectos" multiple class="h-24 rounded border border-border bg-surface px-2 py-1.5">
+        {proyectoOptions.map((p) => (
+          <option value={p.id} selected={tarea?.proyectos?.includes(p.id)}>{p.title}</option>
+        ))}
+      </select>
+    </label>
+  </div>
+
+  <div>
+    <p class="text-sm font-medium">Subtareas</p>
+    <div data-subtareas-container class="mt-2 flex flex-col gap-2">
+      {subtareas.map((s) => (
+        <fieldset data-subtarea-row class="flex items-center gap-2 rounded border border-border p-2">
+          <input name="subtarea_title" value={s.title} placeholder="Título" class="flex-1 rounded border border-border bg-surface px-2 py-1 text-sm" />
+          <label class="flex items-center gap-1 text-xs">
+            <input type="checkbox" name="subtarea_done" checked={s.done} />
+            Hecho
+          </label>
+          <input
+            name="subtarea_assignee"
+            list="jugadores-list"
+            value={(s.assignee ?? []).join(', ')}
+            placeholder="Asignado(s)"
+            class="w-40 rounded border border-border bg-surface px-2 py-1 text-sm"
+          />
+          <button type="button" data-remove-subtarea class="text-xs text-red-500">✕</button>
+        </fieldset>
+      ))}
+    </div>
+    <template data-subtarea-template>
+      <fieldset data-subtarea-row class="flex items-center gap-2 rounded border border-border p-2">
+        <input name="subtarea_title" placeholder="Título" class="flex-1 rounded border border-border bg-surface px-2 py-1 text-sm" />
+        <label class="flex items-center gap-1 text-xs">
+          <input type="checkbox" name="subtarea_done" />
+          Hecho
+        </label>
+        <input
+          name="subtarea_assignee"
+          list="jugadores-list"
+          placeholder="Asignado(s)"
+          class="w-40 rounded border border-border bg-surface px-2 py-1 text-sm"
+        />
+        <button type="button" data-remove-subtarea class="text-xs text-red-500">✕</button>
+      </fieldset>
+    </template>
+    <button type="button" data-add-subtarea class="mt-2 text-xs text-accent hover:underline">+ Agregar subtarea</button>
+  </div>
+
+  <div class="mt-1 flex gap-2">
+    <button type="submit" class="rounded bg-accent px-3 py-1.5 text-sm font-medium text-bg">
+      {mode === 'create' ? 'Crear tarea' : 'Guardar cambios'}
+    </button>
+    {mode === 'edit' && tarea && (
+      <button type="button" data-delete-tarea data-id={tarea.id} class="rounded border border-border px-3 py-1.5 text-sm text-red-500">
+        Eliminar tarea
+      </button>
+    )}
+  </div>
+</form>

@@ -1,0 +1,74 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ItemCard from '../../components/ItemCard.astro';
+import CustomSelect from '../../components/CustomSelect.astro';
+import { getEntry } from 'astro:content';
+import { getProyectos } from '../../lib/proyectos';
+import { getTareas } from '../../lib/tareas';
+
+const allTareas = await getTareas();
+const rawProyectos = (await getProyectos()).sort((a, b) => a.title.localeCompare(b.title));
+const proyectos = await Promise.all(
+  rawProyectos.map(async (p) => {
+    const entry = await getEntry('proyectos', p.id);
+    const related = allTareas.filter((t) => t.proyectos?.includes(p.id));
+    const topPriority = related.length > 0 ? Math.min(...related.map((t) => t.priority)) : undefined;
+    return { proyecto: p, image: entry?.data.images[0], taskCount: related.length, topPriority };
+  })
+);
+---
+
+<BaseLayout title="Proyectos">
+  <p class="label-pixel text-proyectos">Proyectos</p>
+  <h1 class="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Proyectos</h1>
+  <p class="mt-2 text-text-muted">Construcciones y estructuras del servidor.</p>
+
+  <div class="mt-4">
+    <CustomSelect
+      id="sort-proyectos"
+      options={[
+        { value: 'alpha', label: 'Ordenar: alfabético' },
+        { value: 'tareas', label: 'Más tareas pendientes' },
+        { value: 'priority', label: 'Mayor prioridad' },
+      ]}
+    />
+  </div>
+
+  <ul id="proyectos-list" data-stagger class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3">
+    {
+      proyectos.map(({ proyecto, image, taskCount, topPriority }) => (
+        <li data-title={proyecto.title} data-task-count={taskCount} data-top-priority={topPriority ?? 99}>
+          <ItemCard
+            href={`/proyectos/${proyecto.id}`}
+            id={proyecto.id}
+            image={image}
+            alt={proyecto.title}
+            title={proyecto.title}
+            section="proyectos"
+            taskCount={taskCount}
+            topPriority={topPriority}
+          />
+        </li>
+      ))
+    }
+  </ul>
+</BaseLayout>
+
+<script>
+  import { alphaComparator, countDescComparator, priorityAscComparator, sortListBy } from '../../scripts/list-sort.js';
+  import { initCustomSelects } from '../../scripts/custom-select.js';
+
+  document.addEventListener('astro:page-load', () => {
+    initCustomSelects();
+    const select = document.getElementById('sort-proyectos');
+    const list = document.getElementById('proyectos-list');
+    const comparators = {
+      alpha: alphaComparator('title'),
+      tareas: countDescComparator('taskCount'),
+      priority: priorityAscComparator('topPriority'),
+    };
+    select?.addEventListener('change', () => sortListBy(list, select.value, comparators));
+  });
+</script>

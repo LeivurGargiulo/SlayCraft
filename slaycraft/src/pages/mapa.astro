@@ -1,0 +1,31 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import MapPins from "../components/MapPins.astro";
+import { getCollection } from "astro:content";
+import { MAP_URL } from "../config";
+
+const projects = await getCollection("projects");
+---
+<BaseLayout title="Mapa" description="El mundo de SlayCraft visto desde arriba.">
+  <section class="mx-auto max-w-5xl px-4 py-10">
+    <p class="font-display text-xs text-accent">DESDE ARRIBA</p>
+    <h1 class="mt-2 font-body text-2xl text-text">Mapa</h1>
+
+    {MAP_URL ? (
+      <a
+        href={MAP_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="mt-6 inline-block rounded border border-border-strong bg-surface px-4 py-2 font-mono text-sm text-text hover:text-accent"
+      >
+        Abrir mapa en vivo ↗
+      </a>
+    ) : (
+      <p class="mt-6 font-mono text-sm text-info">Mapa no configurado todavía.</p>
+    )}
+
+    <div class="mt-8">
+      <MapPins projects={projects} />
+    </div>
+  </section>
+</BaseLayout>

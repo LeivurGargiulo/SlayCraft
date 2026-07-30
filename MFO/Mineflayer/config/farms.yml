@@ -1,0 +1,11 @@
+farms:
+  iron:
+    dimension: overworld
+    teleport:
+      x: 4895
+      y: 212
+      z: -1254
+    carpetWorker: Shulker
+    storage:
+      - type: chest
+        position: [4878, 128, -1261]

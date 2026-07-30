@@ -1,0 +1,88 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProyectoForm from '../../components/ProyectoForm.astro';
+import { isAdmin } from '../../lib/admin-auth';
+import { getProyectos } from '../../lib/proyectos';
+
+if (!isAdmin(Astro.cookies)) return Astro.redirect('/admin/login');
+
+const proyectos = (await getProyectos()).sort((a, b) => a.title.localeCompare(b.title));
+---
+
+<BaseLayout title="Admin · Proyectos">
+  <a href="/admin" class="text-sm text-text-muted hover:text-accent">← Admin</a>
+  <h1 class="mt-2 text-2xl font-semibold">
+    Proyectos <span class="font-mono text-sm font-normal text-text-muted">({proyectos.length})</span>
+  </h1>
+
+  <details class="mt-4 rounded border border-border p-3">
+    <summary class="cursor-pointer text-sm font-medium">+ Nuevo proyecto</summary>
+    <div class="mt-3">
+      <ProyectoForm mode="create" />
+    </div>
+  </details>
+
+  <ul class="mt-6 flex flex-col divide-y divide-border border-t border-b border-border">
+    {proyectos.map((p) => (
+      <li class="py-3">
+        <p class="font-medium">{p.title}</p>
+        <div class="mt-2 flex items-center gap-3">
+          <details>
+            <summary class="cursor-pointer text-xs text-accent">Editar</summary>
+            <div class="mt-2">
+              <ProyectoForm mode="edit" proyecto={p} />
+            </div>
+          </details>
+          <button type="button" data-delete-proyecto data-id={p.id} class="text-xs text-red-500 hover:underline">
+            Eliminar
+          </button>
+        </div>
+      </li>
+    ))}
+    {proyectos.length === 0 && <li class="py-3 text-sm text-text-muted">Sin proyectos.</li>}
+  </ul>
+</BaseLayout>
+
+<script>
+  function reloadAfterWrite() {
+    setTimeout(() => location.reload(), 1500);
+  }
+
+  function buildPayload(form) {
+    const title = form.querySelector('[name="title"]').value.trim();
+    const coordinates = form.querySelector('[name="coordinates"]').value
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return { title, coordinates };
+  }
+
+  document.addEventListener('click', (e) => {
+    const deleteBtn = e.target.closest('[data-delete-proyecto]');
+    if (deleteBtn) {
+      if (!confirm('¿Eliminar este proyecto?')) return;
+      fetch(`/api/admin/proyectos/${deleteBtn.dataset.id}`, { method: 'DELETE' }).then((res) => {
+        if (res.ok) reloadAfterWrite();
+        else alert('Error al eliminar el proyecto.');
+      });
+    }
+  });
+
+  document.addEventListener('submit', (e) => {
+    const form = e.target.closest('[data-proyecto-form]');
+    if (!form) return;
+    e.preventDefault();
+    const payload = buildPayload(form);
+    const mode = form.dataset.mode;
+    const url = mode === 'create' ? '/api/admin/proyectos' : `/api/admin/proyectos/${form.dataset.id}`;
+    const method = mode === 'create' ? 'POST' : 'PATCH';
+    fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(
+      (res) => {
+        if (res.ok) reloadAfterWrite();
+        else alert('Error al guardar el proyecto.');
+      }
+    );
+  });
+</script>

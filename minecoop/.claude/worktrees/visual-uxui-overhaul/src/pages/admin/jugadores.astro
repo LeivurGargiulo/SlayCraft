@@ -1,0 +1,91 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import JugadorForm from '../../components/JugadorForm.astro';
+import { isAdmin } from '../../lib/admin-auth';
+import { getJugadores } from '../../lib/jugadores';
+import { ACTIVIDAD_LABELS } from '../../data/jugadores';
+
+if (!isAdmin(Astro.cookies)) return Astro.redirect('/admin/login');
+
+const jugadores = (await getJugadores()).sort((a, b) => a.username.localeCompare(b.username));
+---
+
+<BaseLayout title="Admin · Jugadores">
+  <a href="/admin" class="text-sm text-text-muted hover:text-jugadores">← Admin</a>
+  <p class="label-pixel mt-2 text-jugadores">Jugadores</p>
+  <h1 class="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
+    Jugadores <span class="font-mono text-sm font-normal text-text-muted">({jugadores.length})</span>
+  </h1>
+
+  <details class="mt-4 rounded border border-border p-3">
+    <summary class="cursor-pointer text-sm font-medium">+ Nuevo jugador</summary>
+    <div class="mt-3">
+      <JugadorForm mode="create" />
+    </div>
+  </details>
+
+  <ul class="mt-6 flex flex-col divide-y divide-border border-t border-b border-border">
+    {jugadores.map((j) => (
+      <li class="flex items-center justify-between gap-3 py-3">
+        <div>
+          <p class="font-medium">{j.username}</p>
+          <p class="text-xs text-text-muted">{ACTIVIDAD_LABELS[j.actividad]}</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <details>
+            <summary class="cursor-pointer text-xs text-jugadores">Editar</summary>
+            <div class="mt-2">
+              <JugadorForm mode="edit" jugador={j} />
+            </div>
+          </details>
+          <button type="button" data-delete-jugador data-username={j.username} class="text-xs text-red-500 hover:underline">
+            Eliminar
+          </button>
+        </div>
+      </li>
+    ))}
+    {jugadores.length === 0 && <li class="py-3 text-sm text-text-muted">Sin jugadores.</li>}
+  </ul>
+</BaseLayout>
+
+<script>
+  function reloadAfterWrite() {
+    setTimeout(() => location.reload(), 1500);
+  }
+
+  document.addEventListener('click', (e) => {
+    const deleteBtn = e.target.closest('[data-delete-jugador]');
+    if (deleteBtn) {
+      if (!confirm('¿Eliminar este jugador?')) return;
+      fetch(`/api/admin/jugadores/${encodeURIComponent(deleteBtn.dataset.username)}`, { method: 'DELETE' }).then(
+        (res) => {
+          if (res.ok) reloadAfterWrite();
+          else alert('Error al eliminar el jugador.');
+        }
+      );
+    }
+  });
+
+  document.addEventListener('submit', (e) => {
+    const form = e.target.closest('[data-jugador-form]');
+    if (!form) return;
+    e.preventDefault();
+    const username = form.querySelector('[name="username"]').value.trim();
+    const actividad = form.querySelector('[name="actividad"]').value;
+    const mode = form.dataset.mode;
+    const url =
+      mode === 'create'
+        ? '/api/admin/jugadores'
+        : `/api/admin/jugadores/${encodeURIComponent(form.dataset.username)}`;
+    const method = mode === 'create' ? 'POST' : 'PATCH';
+    const body = mode === 'create' ? { username, actividad } : { actividad };
+    fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(
+      (res) => {
+        if (res.ok) reloadAfterWrite();
+        else alert('Error al guardar el jugador.');
+      }
+    );
+  });
+</script>

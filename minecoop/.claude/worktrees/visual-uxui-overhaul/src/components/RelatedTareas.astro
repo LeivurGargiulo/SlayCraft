@@ -1,0 +1,32 @@
+---
+import type { Tarea } from '../lib/tareas';
+import PriorityBadge from './PriorityBadge.astro';
+
+interface Props {
+  tareas: Tarea[];
+}
+const { tareas } = Astro.props;
+const sorted = [...tareas].sort((a, b) => a.priority - b.priority);
+
+const statusLabels: Record<string, string> = { pendiente: 'Pendiente', 'en-progreso': 'En progreso' };
+---
+
+{
+  sorted.length > 0 && (
+    <div class="mt-6">
+      <h2 class="text-sm font-medium text-text-muted">Tareas relacionadas</h2>
+      <ul class="mt-2 flex flex-col divide-y divide-border border-t border-b border-border">
+        {sorted.map((t) => (
+          <li class="flex items-center gap-3 py-2 text-sm">
+            <span class="font-mono text-text-muted" aria-hidden="true">
+              ☐
+            </span>
+            <span class="uppercase">{t.title}</span>
+            <PriorityBadge priority={t.priority} />
+            <span class="ml-auto text-xs text-text-muted">{statusLabels[t.status]}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}

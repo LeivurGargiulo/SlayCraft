@@ -1,0 +1,45 @@
+---
+interface Props {
+  id: string;
+  options: { value: string; label: string }[];
+}
+
+const { id, options } = Astro.props;
+---
+
+<div class="relative inline-block" data-custom-select>
+  <select id={id} class="sr-only" tabindex="-1" aria-hidden="true">
+    {options.map((o) => <option value={o.value}>{o.label}</option>)}
+  </select>
+  <button
+    type="button"
+    data-select-trigger
+    aria-haspopup="listbox"
+    aria-expanded="false"
+    class="flex items-center gap-2 rounded border border-border bg-surface px-2 py-1.5 text-sm text-text transition-colors hover:border-accent"
+  >
+    <span data-select-label>{options[0]?.label}</span>
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
+      <path d="M2 3.5 5 6.5 8 3.5" />
+    </svg>
+  </button>
+  <ul
+    data-select-list
+    role="listbox"
+    class="absolute left-0 top-full z-20 mt-1 hidden max-h-60 min-w-full overflow-auto rounded border border-border bg-surface py-1 text-sm shadow-lg shadow-black/40"
+  >
+    {
+      options.map((o, i) => (
+        <li
+          role="option"
+          tabindex="-1"
+          data-value={o.value}
+          aria-selected={i === 0 ? 'true' : 'false'}
+          class="cursor-pointer whitespace-nowrap px-3 py-1.5 text-text hover:bg-border/40"
+        >
+          {o.label}
+        </li>
+      ))
+    }
+  </ul>
+</div>

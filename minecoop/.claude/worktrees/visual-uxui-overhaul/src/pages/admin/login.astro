@@ -1,0 +1,22 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { isAdmin } from '../../lib/admin-auth';
+
+if (isAdmin(Astro.cookies)) return Astro.redirect('/admin');
+
+const error = Astro.url.searchParams.get('error');
+---
+
+<BaseLayout title="Admin · Iniciar sesión">
+  <h1 class="text-2xl font-semibold">Panel de administración</h1>
+  {error && <p class="mt-2 text-sm text-red-500">Clave incorrecta.</p>}
+  <form method="POST" action="/api/admin/login" class="mt-4 flex max-w-sm flex-col gap-3">
+    <label class="flex flex-col gap-1 text-sm">
+      Clave
+      <input type="password" name="password" required class="rounded border border-border bg-surface px-2 py-1.5" />
+    </label>
+    <button type="submit" class="mt-2 rounded bg-accent px-3 py-1.5 text-sm font-medium text-bg">Entrar</button>
+  </form>
+</BaseLayout>

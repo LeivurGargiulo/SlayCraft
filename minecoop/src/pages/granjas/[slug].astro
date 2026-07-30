@@ -1,0 +1,36 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CoordList from '../../components/CoordList.astro';
+import Gallery from '../../components/Gallery.astro';
+import RelatedTareas from '../../components/RelatedTareas.astro';
+import { getEntry } from 'astro:content';
+import { getTareas } from '../../lib/tareas';
+import { getGranjas } from '../../lib/granjas';
+
+const granja = (await getGranjas()).find((g) => g.id === Astro.params.slug);
+if (!granja) return new Response('Not found', { status: 404 });
+
+const imageEntry = await getEntry('granjas', granja.id);
+
+const tareas = (await getTareas()).filter((t) => t.granjas?.includes(granja.id));
+---
+
+<BaseLayout title={granja.title}>
+  <a href="/granjas" class="text-sm text-text-muted hover:text-accent">← Granjas</a>
+
+  <h1 class="mt-2 text-2xl font-semibold">{granja.title}</h1>
+
+  {imageEntry && (
+    <div class="mt-6">
+      <Gallery images={imageEntry.data.images} alt={granja.title} />
+    </div>
+  )}
+
+  <div class="mt-8">
+    <CoordList coordinates={granja.coordinates} />
+  </div>
+
+  <RelatedTareas tareas={tareas} />
+</BaseLayout>

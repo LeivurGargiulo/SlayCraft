@@ -1,0 +1,77 @@
+---
+---
+<section
+  id="hero-cross-section"
+  class="relative h-[70vh] min-h-[420px] w-full overflow-hidden"
+  aria-label="Corte transversal del mundo de SlayCraft"
+>
+  <div data-parallax data-speed="0.2" class="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-sky-300 to-sky-100">
+    <div class="cloud absolute left-[10%] top-[15%] h-10 w-32 rounded-full bg-white/70"></div>
+    <div class="cloud absolute left-[55%] top-[30%] h-8 w-40 rounded-full bg-white/60" style="animation-delay: -6s;"></div>
+    <div class="cloud absolute left-[75%] top-[10%] h-6 w-24 rounded-full bg-white/50" style="animation-delay: -12s;"></div>
+  </div>
+  {/* Literal terrain strata colors — intentionally not theme tokens, so the cross-section stays put when toggling light/dark (grass green here coincides with the light --accent value, but must not follow it). */}
+  <div data-parallax data-speed="0.4" class="absolute inset-x-0 top-[45%] h-[12%] bg-[#3D8B37]"></div>
+  <div data-parallax data-speed="0.6" class="absolute inset-x-0 top-[57%] h-[23%] bg-[#8A8578]"></div>
+  <div data-parallax data-speed="0.8" class="absolute inset-x-0 top-[80%] h-[20%] bg-[#1F1F24]"></div>
+
+  <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center">
+    <h1 class="font-display text-2xl text-bg drop-shadow-md sm:text-3xl">SLAYCRAFT</h1>
+    <p class="max-w-md font-body text-bg drop-shadow-md">
+      Servidor de Minecraft cooperativo de supervivencia. Sin apuro, sin reglas raras: construimos entre todos.
+    </p>
+  </div>
+</section>
+
+<style>
+  .cloud {
+    animation: drift 60s linear infinite;
+  }
+
+  @keyframes drift {
+    from {
+      transform: translateX(-10vw);
+    }
+    to {
+      transform: translateX(10vw);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cloud {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  import { parallaxOffset } from "../lib/scroll";
+
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (!reduceMotion) {
+    const layers = document.querySelectorAll<HTMLElement>("#hero-cross-section [data-parallax]");
+    let ticking = false;
+
+    function update() {
+      const scrollY = window.scrollY;
+      layers.forEach((layer) => {
+        const speed = Number(layer.dataset.speed ?? "0");
+        const offset = parallaxOffset(scrollY, speed, 200);
+        layer.style.transform = `translateY(${offset}px)`;
+      });
+      ticking = false;
+    }
+
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!ticking) {
+          requestAnimationFrame(update);
+          ticking = true;
+        }
+      },
+      { passive: true }
+    );
+  }
+</script>

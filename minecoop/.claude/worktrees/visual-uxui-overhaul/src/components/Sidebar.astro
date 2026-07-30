@@ -1,0 +1,87 @@
+---
+import { SECTION_COLORS } from '../lib/section-colors';
+
+const path = Astro.url.pathname;
+const isActive = (href: string) => path === href || (href !== '/' && path.startsWith(href));
+
+const icon = {
+  home: '<path d="M3 9.5 8 5l5 4.5V14a1 1 0 0 1-1 1h-2.5v-3.5h-3V15H4a1 1 0 0 1-1-1V9.5Z"/>',
+  proyectos: '<rect x="3" y="3" width="4" height="4" rx="0.5"/><rect x="9" y="3" width="4" height="4" rx="0.5"/><rect x="3" y="9" width="4" height="4" rx="0.5"/><rect x="9" y="9" width="4" height="4" rx="0.5"/>',
+  granjas: '<path d="M2 13h12M4 13V7l4-3 4 3v6"/><path d="M7 13v-3h2v3"/>',
+  mapa: '<path d="M2 4.5 6 3l4 1.5 4-1.5v9L10 13.5 6 12l-4 1.5v-9Z"/><path d="M6 3v9M10 4.5v9"/>',
+  tareas: '<rect x="3" y="2.5" width="10" height="11" rx="1"/><path d="M5.5 6h5M5.5 8.5h5M5.5 11h3"/>',
+  jugadores: '<circle cx="8" cy="5.5" r="2.5"/><path d="M3 14c0-2.8 2.2-5 5-5s5 2.2 5 5"/>',
+  admin: '<circle cx="8" cy="8" r="2"/><path d="M8 2.5v2M8 11.5v2M2.5 8h2M11.5 8h2M4.3 4.3l1.4 1.4M10.3 10.3l1.4 1.4M4.3 11.7l1.4-1.4M10.3 5.7l1.4-1.4"/>',
+} as const;
+
+const groups: { label: string; links: { href: string; label: string; icon: string; dot: string; external?: boolean }[] }[] = [
+  {
+    label: 'Contenido',
+    links: [
+      { href: '/proyectos', label: 'Proyectos', icon: icon.proyectos, dot: SECTION_COLORS.proyectos.bg },
+      { href: '/granjas', label: 'Granjas', icon: icon.granjas, dot: SECTION_COLORS.granjas.bg },
+      { href: '/jugadores', label: 'Jugadores', icon: icon.jugadores, dot: SECTION_COLORS.jugadores.bg },
+    ],
+  },
+  {
+    label: 'Actividad',
+    links: [{ href: '/tareas', label: 'Tareas', icon: icon.tareas, dot: SECTION_COLORS.tareas.bg }],
+  },
+  {
+    label: 'Servidor',
+    links: [{ href: 'http://190.244.136.239:25566', label: 'Mapa', icon: icon.mapa, dot: SECTION_COLORS.accent.bg, external: true }],
+  },
+];
+---
+
+<nav aria-label="Navegación principal" class="flex flex-col gap-4 p-4 text-sm">
+  <a
+    href="/"
+    class:list={[
+      'flex items-center gap-2.5 rounded border-l-2 px-2 py-1.5 font-medium transition-colors duration-150 hover:bg-border/40',
+      path === '/' ? 'border-accent bg-border/40 text-accent' : 'border-transparent text-text',
+    ]}
+  >
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true" set:html={icon.home} />
+    Inicio
+  </a>
+
+  {
+    groups.map((group) => (
+      <div>
+        <p class="label-pixel px-2 text-text-muted">{group.label}</p>
+        <div class="mt-1 flex flex-col gap-1">
+          {group.links.map((link) => (
+            <a
+              href={link.href}
+              target={link.external ? '_blank' : undefined}
+              rel={link.external ? 'noopener noreferrer' : undefined}
+              class:list={[
+                'flex items-center gap-2.5 rounded border-l-2 px-2 py-1.5 font-medium transition-colors duration-150 hover:bg-border/40',
+                isActive(link.href) ? 'border-accent bg-border/40 text-accent' : 'border-transparent text-text',
+              ]}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true" set:html={link.icon} />
+              {link.label}
+              <span class:list={['ml-auto h-1.5 w-1.5 rounded-full', link.dot]} aria-hidden="true" />
+            </a>
+          ))}
+        </div>
+      </div>
+    ))
+  }
+
+  <div class="border-t border-border pt-3">
+    <p class="label-pixel px-2 text-text-muted">Admin</p>
+    <a
+      href="/admin"
+      class:list={[
+        'mt-1 flex items-center gap-2.5 rounded border-l-2 px-2 py-1.5 font-medium transition-colors duration-150 hover:bg-border/40',
+        isActive('/admin') ? 'border-accent bg-border/40 text-accent' : 'border-transparent text-text',
+      ]}
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true" set:html={icon.admin} />
+      Admin
+    </a>
+  </div>
+</nav>

@@ -1,0 +1,1044 @@
+This is a solid design. The biggest strength is that you're treating this as **observability infrastructure**, not gameplay automation. That keeps the scope focused, avoids feature creep, and makes it easier to maintain.
+
+Below is the architecture specification I would give to Claude Code.
+
+---
+
+# Minecraft Farm Observatory (MFO)
+
+## Goal
+
+Minecraft Farm Observatory (MFO) is an observability platform for a Fabric technical Minecraft server.
+
+It **does not automate gameplay**.
+
+It only observes the server, gathers metrics, takes screenshots, computes health, and alerts players.
+
+Think of it as:
+
+> Prometheus + Grafana + CCTV for Minecraft farms.
+
+---
+
+# Core Principles
+
+## Read-only
+
+The Manager may:
+
+* Teleport
+* Open containers
+* Read inventories
+* Rotate camera
+* Capture screenshots
+* Stream camera
+* Read entities
+* Read blocks
+* Read dimensions
+* Read chunk state
+
+The Manager may NEVER:
+
+* Move items
+* Pick up items
+* Drop items
+* Place blocks
+* Break blocks
+* Attack
+* Trade
+* Craft
+* Press buttons
+* Flip levers
+* Activate redstone
+
+The only gameplay permission is teleportation.
+
+---
+
+# High-Level Architecture
+
+```text
+                     Users
+            Discord / Web Dashboard
+
+                    │
+
+             REST + WebSocket API
+
+                    │
+
+        ┌──────────────────────────┐
+        │      Manager Core        │
+        └──────────────────────────┘
+
+      Farm Registry
+      Scheduler
+      Health Engine
+      Alert Engine
+      Metrics Engine
+      Screenshot Engine
+      Storage Scanner
+      Entity Scanner
+      Camera Manager
+      Persistence
+
+                    │
+
+             Mineflayer Manager
+
+                    │
+
+        Minecraft Fabric Server
+
+                    │
+
+          Carpet Fake Players
+
+         Worker-Iron
+         Worker-Gold
+         Worker-Raid
+         Worker-Guardian
+```
+
+---
+
+# Components
+
+## Mineflayer Manager
+
+Singleton.
+
+Only one instance exists.
+
+Responsibilities
+
+* Teleport
+* Scan farms
+* Capture screenshots
+* Open inventories
+* Calculate storage
+* Observe entities
+* Report metrics
+
+Stateless.
+
+Never permanently assigned to a farm.
+
+---
+
+## Carpet Workers
+
+One per farm.
+
+Responsibilities
+
+* Load chunks
+* Keep farms operational
+* Execute repetitive Carpet actions
+
+Workers never communicate.
+
+The Manager observes them.
+
+---
+
+## Farm Registry
+
+Configuration-driven.
+
+Example:
+
+```yaml
+farms:
+
+  iron:
+
+    dimension: overworld
+
+    teleport:
+
+      x: 120
+      y: 80
+      z: -500
+
+    carpetWorker: worker_iron
+
+    storage:
+
+      - type: chest
+        position: [123,79,-501]
+
+      - type: barrel
+        position: [124,79,-501]
+
+    cameras:
+
+      overview:
+        yaw: 180
+        pitch: -20
+
+      storage:
+        yaw: 90
+        pitch: -35
+
+      villagers:
+        yaw: 270
+        pitch: 15
+```
+
+No hardcoded farms.
+
+---
+
+# Scheduler
+
+Responsible for all Manager movement.
+
+Queue-based.
+
+Example
+
+```
+Inspect Iron
+
+↓
+
+Screenshot Gold
+
+↓
+
+Storage Scan Raid
+
+↓
+
+Camera Guardian
+
+↓
+
+Return Idle
+```
+
+Priority Queue
+
+Highest
+
+* Mineflayer reconnect
+
+High
+
+* Alert verification
+
+Medium
+
+* User command
+
+Low
+
+* Periodic scan
+
+---
+
+# Storage Scanner
+
+Supports
+
+* Chest
+* Double Chest
+* Barrel
+* Shulker Box
+* Nested Shulker Boxes
+
+Returns
+
+```
+Container
+
+Capacity
+
+Items
+
+Slots Used
+
+Fill %
+
+NBT
+
+Nested Contents
+```
+
+Never modifies inventory.
+
+Read-only.
+
+---
+
+# Production Engine
+
+Calculates
+
+```
+Item Count
+
+↓
+
+Compare Previous Scan
+
+↓
+
+Delta
+
+↓
+
+Items/min
+
+↓
+
+Items/hour
+
+↓
+
+Rolling Average
+
+↓
+
+Daily Total
+```
+
+Stores history forever.
+
+---
+
+# Camera System
+
+Supports unlimited named viewpoints.
+
+Example
+
+```
+Iron
+
+Overview
+
+Storage
+
+Villagers
+
+Spawn Platform
+
+Collection
+```
+
+Each waypoint stores
+
+```
+Position
+
+Yaw
+
+Pitch
+
+Dimension
+```
+
+Manager teleports.
+
+Rotates.
+
+Captures screenshot.
+
+Returns.
+
+---
+
+# Live Viewer
+
+Prismarine Viewer.
+
+Only one live stream.
+
+The active stream follows the Manager.
+
+Selecting another camera
+
+↓
+
+Manager teleports
+
+↓
+
+Viewer updates automatically.
+
+---
+
+# Screenshot Engine
+
+Three modes
+
+## Alert
+
+Automatic.
+
+Stored permanently.
+
+Attached to Discord.
+
+---
+
+## Scheduled
+
+Example
+
+```
+Every 15 minutes
+```
+
+Archive.
+
+---
+
+## Manual
+
+Discord
+
+```
+/camera guardian storage
+```
+
+Returns image.
+
+---
+
+# Entity Scanner
+
+Scans configurable radius.
+
+Detects
+
+Passive mobs
+
+Hostile mobs
+
+Villagers
+
+Armor stands
+
+Minecarts
+
+Players
+
+Named entities
+
+Unknown entities
+
+Unexpected mobs
+
+Supports whitelist.
+
+Example
+
+```
+Guardian Farm
+
+Allowed
+
+Guardian
+
+Minecart
+
+Armor Stand
+
+Manager
+
+Worker
+
+Unknown
+
+Zombie
+
+↓
+
+Alert
+```
+
+---
+
+# Worker Monitor
+
+Checks
+
+Worker exists
+
+Correct dimension
+
+Correct coordinates
+
+Chunk loaded
+
+Alive
+
+Connected
+
+If missing
+
+↓
+
+Critical alert.
+
+---
+
+# Chunk Monitor
+
+Verifies
+
+Target chunk loaded
+
+Worker chunk loaded
+
+Storage chunk loaded
+
+If unloaded
+
+↓
+
+Critical.
+
+---
+
+# Health Engine
+
+Every farm has exactly one health.
+
+```
+UNKNOWN
+
+↓
+
+OFFLINE
+
+↓
+
+CRITICAL
+
+↓
+
+WARNING
+
+↓
+
+HEALTHY
+```
+
+Computed.
+
+Never manually assigned.
+
+---
+
+Health inputs
+
+Storage
+
+Production
+
+Worker
+
+Chunk
+
+Entities
+
+Manager
+
+Last scan
+
+---
+
+# Alert Engine
+
+Supported alerts
+
+Storage >90%
+
+Storage full
+
+Production stopped
+
+Worker missing
+
+Chunk unloaded
+
+Manager disconnected
+
+Unexpected player
+
+Unexpected entity
+
+Camera failure
+
+Container inaccessible
+
+Alert lifecycle
+
+```
+Triggered
+
+↓
+
+Open
+
+↓
+
+Acknowledged
+
+↓
+
+Resolved
+
+↓
+
+Archived
+```
+
+---
+
+# Metrics
+
+Per farm
+
+Storage %
+
+Items
+
+Items/hour
+
+Items/day
+
+Health
+
+Worker uptime
+
+Last screenshot
+
+Scan duration
+
+Entities
+
+Chunks loaded
+
+---
+
+Global
+
+Manager uptime
+
+Connected
+
+TPS
+
+Loaded farms
+
+Active alerts
+
+---
+
+# Database
+
+SQLite
+
+Unlimited history.
+
+Tables
+
+```
+farms
+
+containers
+
+container_snapshots
+
+production
+
+health
+
+alerts
+
+screenshots
+
+workers
+
+entities
+
+users
+
+settings
+
+camera_presets
+
+manager_status
+```
+
+Indexes
+
+Timestamp
+
+Farm
+
+Alert State
+
+Container
+
+---
+
+# REST API
+
+```
+GET /farms
+
+GET /farm/{id}
+
+GET /farm/{id}/health
+
+GET /farm/{id}/storage
+
+GET /farm/{id}/metrics
+
+GET /farm/{id}/alerts
+
+GET /farm/{id}/production
+
+GET /farm/{id}/screenshots
+
+POST /camera
+
+POST /scan
+
+POST /alert/ack
+
+GET /dashboard
+```
+
+---
+
+# WebSocket
+
+Events
+
+```
+HealthChanged
+
+AlertCreated
+
+AlertResolved
+
+ScreenshotReady
+
+ManagerMoved
+
+StorageUpdated
+
+ProductionUpdated
+
+WorkerOffline
+```
+
+---
+
+# Discord
+
+Commands
+
+```
+/farm
+
+/storage
+
+/camera
+
+/health
+
+/production
+
+/alerts
+
+/workers
+
+/dashboard
+
+/help
+```
+
+Notifications
+
+Storage warning
+
+Storage full
+
+Production stopped
+
+Worker offline
+
+Unknown player
+
+Unknown entity
+
+Manager offline
+
+Screenshot attached.
+
+---
+
+# Web Dashboard
+
+Pages
+
+## Overview
+
+Farm cards
+
+Health
+
+Alerts
+
+Storage
+
+Live camera
+
+---
+
+## Farm
+
+Storage
+
+Metrics
+
+Production graph
+
+Timeline
+
+Health
+
+Cameras
+
+Screenshots
+
+---
+
+## Camera
+
+Live viewer
+
+Waypoint selector
+
+Screenshot history
+
+---
+
+## Alerts
+
+Open
+
+Acknowledged
+
+Resolved
+
+History
+
+---
+
+## Workers
+
+Status
+
+Dimension
+
+Coordinates
+
+Uptime
+
+---
+
+## Manager
+
+Connected
+
+Current task
+
+Queue
+
+Current farm
+
+Latency
+
+---
+
+# Security
+
+Discord
+
+Whitelist by User ID.
+
+Roles
+
+Admin
+
+Viewer
+
+---
+
+Dashboard
+
+Username
+
+Password
+
+JWT
+
+HTTPS ready.
+
+---
+
+# Configuration
+
+```
+config/
+
+server.yml
+
+farms.yml
+
+workers.yml
+
+alerts.yml
+
+discord.yml
+
+dashboard.yml
+
+cameras.yml
+
+storage.yml
+```
+
+---
+
+# Suggested Project Structure
+
+```text
+src/
+
+ core/
+    scheduler/
+    registry/
+    events/
+    config/
+
+ manager/
+    teleport/
+    scanner/
+    cameras/
+    storage/
+    entities/
+    screenshots/
+
+ health/
+ metrics/
+ alerts/
+
+ integrations/
+    discord/
+    prismarine/
+    carpet/
+
+ dashboard/
+    api/
+    websocket/
+    frontend/
+
+ database/
+
+ models/
+
+ utils/
+```
+
+---
+
+# Event Bus (Internal)
+
+Everything communicates through events rather than direct calls.
+
+Examples:
+
+```text
+ContainerScanned
+ProductionUpdated
+HealthComputed
+AlertTriggered
+ScreenshotCaptured
+WorkerMissing
+ManagerConnected
+UnknownPlayerDetected
+```
+
+This keeps the system modular and makes it easy to add new monitoring features.
+
+---
+
+# Recommended Technology Stack
+
+| Component            | Technology                                                                      |
+| -------------------- | ------------------------------------------------------------------------------- |
+| Language             | TypeScript                                                                      |
+| Runtime              | Node.js 22 LTS                                                                  |
+| Minecraft            | Mineflayer                                                                      |
+| Pathfinding (future) | mineflayer-pathfinder (installed but movement disabled except teleport support) |
+| Live View            | Prismarine Viewer                                                               |
+| Database             | SQLite + Drizzle ORM                                                            |
+| REST API             | Fastify                                                                         |
+| WebSocket            | Socket.IO                                                                       |
+| Dashboard            | React + Vite + Mantine UI                                                       |
+| Charts               | Apache ECharts                                                                  |
+| Authentication       | JWT + bcrypt                                                                    |
+| Configuration        | YAML                                                                            |
+| Logging              | Pino                                                                            |
+| Validation           | Zod                                                                             |
+| Scheduling           | BullMQ (or an in-process priority queue if single-instance only)                |
+| Containerization     | Docker + Docker Compose                                                         |
+
+---
+
+# Future Plugin System
+
+Design every scanner as a plugin implementing a common interface:
+
+```ts
+interface FarmMonitor {
+  id: string;
+  scan(farm: FarmContext): Promise<ScanResult>;
+}
+```
+
+Built-in monitors could include:
+
+* StorageMonitor
+* ProductionMonitor
+* WorkerMonitor
+* ChunkMonitor
+* EntityMonitor
+* CameraMonitor
+
+This allows adding new observability features (e.g., villager health, beacon status, redstone state, hopper throughput, mob counts) without modifying the core scheduler or health engine.
+
+---
+
+## Development Roadmap
+
+I would implement the project in these phases:
+
+1. **Foundation**: configuration loading, event bus, scheduler, database, logging, and Mineflayer connection.
+2. **Observation**: teleportation, storage scanning, screenshots, camera presets, and entity scanning.
+3. **Health & Metrics**: production calculations, farm health computation, historical storage snapshots, and alerts.
+4. **Integrations**: Discord commands/notifications, REST API, WebSocket events, and Prismarine Viewer.
+5. **Dashboard**: live overview, farm pages, charts, alert management, authentication, and screenshot gallery.
+6. **Polish**: plugin system, configuration validation, backups, testing, documentation, and Docker deployment.
+
+This architecture is intentionally modular: every subsystem communicates through events, every farm is configuration-driven, and the Mineflayer Manager remains a **read-only observer** while Carpet workers remain **simple infrastructure actors**. That separation should keep the system maintainable even as your technical server and number of farms grow substantially.
