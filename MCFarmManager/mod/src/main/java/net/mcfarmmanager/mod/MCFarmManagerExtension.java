@@ -89,8 +89,21 @@ public final class MCFarmManagerExtension implements CarpetExtension {
         return SETTINGS;
     }
 
+    // parseSettingsClass() only builds SETTINGS' internal rule map - it does not wire the
+    // `/carpet <rule>` Brigadier command tree for this extension's rules. That requires this
+    // extension to also implement registerCommands(dispatcher, context) and forward to
+    // SETTINGS.registerCommand(...); CarpetServer only does this automatically for its own
+    // built-in CarpetSettings manager, not for extensions. Confirmed live: without this override,
+    // the HTTP server started fine on the Settings class' hardcoded field defaults, but every one
+    // of the five rules was "Unknown rule" to `/carpet`, and `/carpet list mcfarmmanager` showed
+    // nothing beyond the mod's version string.
     @Override
-    public void onGameStarted() {
+    public void registerCommands(com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack> dispatcher,
+                                  net.minecraft.commands.CommandBuildContext context) {
+        SETTINGS.registerCommand(dispatcher, context);
+    }
+
+    void registerSettings() {
         SETTINGS.parseSettingsClass(Settings.class);
         MCFarmManagerMod.LOGGER.info("MCFarmManager Carpet extension registered");
     }

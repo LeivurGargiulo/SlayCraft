@@ -1,8 +1,11 @@
 # MCFarmManager — Technical Specification
 
-**Status:** approved design, not yet implemented. This document is the source of truth for
-architecture, protocol, and data model. `AGENT_BUILD_PROMPT.md` in this same directory is the
-phased brief for actually building it — read this document first, that one second.
+**Status:** implemented and live-verified (see top-level `README.md` for what's built). This
+document remains the source of truth for architecture, protocol, and data model.
+`AGENT_BUILD_PROMPT.md` in this same directory is the phased brief this was built from — read
+this document first, that one second. The "Dashboard" section below (and `AGENT_BUILD_PROMPT.md`'s
+Phase 4) describes a dashboard that was **not built here** — superseded by this repo's separate
+coordination dashboard, which proxies this mod's HTTP API instead. See `README.md`.
 
 ## What this is
 
@@ -302,6 +305,10 @@ network, that's a protocol change (a token header, most likely) — not somethin
 half-build now for a threat model that doesn't apply yet.
 
 ## Dashboard
+
+**Superseded — not built.** This section describes the mod's originally-planned own dashboard.
+It was not implemented: this repo's separate coordination dashboard proxies this mod's HTTP API
+internally instead, absorbing the role described below. Kept for historical context only.
 
 Static site (`dashboard/` — plain HTML/CSS/vanilla JS, no build step, no framework, no CDN
 dependency) bundled into the mod jar's resources and served by the same embedded HTTP server

@@ -23,7 +23,9 @@ public final class MCFarmManagerMod implements ModInitializer {
     @Override
     public void onInitialize() {
         LOGGER.info("MCFarmManager mod loaded (base entrypoint)");
-        CarpetServer.manageExtension(new MCFarmManagerExtension());
+        MCFarmManagerExtension extension = new MCFarmManagerExtension();
+        CarpetServer.manageExtension(extension);
+        extension.registerSettings();
 
         try {
             farms = FarmConfigLoader.load(

@@ -167,6 +167,10 @@ default anywhere in code.
 
 ### Phase 4 — Dashboard
 
+**Superseded — not built.** This repo's separate coordination dashboard proxies this mod's
+HTTP API internally instead of this mod serving its own UI. Kept below for historical context
+only; do not build this.
+
 Static site in `dashboard/`, bundled into the mod jar's resources, served by the same
 `HttpServer` instance from Phase 2 on `/` and its asset paths (same origin, no CORS
 handling). Implement the three views from `SPEC.md`'s "Dashboard" section (Overview, Farm
