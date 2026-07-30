@@ -9,6 +9,7 @@ import { registerFarmRoutes } from './routes/farms.js';
 import { registerMiscRoutes } from './routes/misc.js';
 import { registerTaskRoutes } from './routes/tasks.js';
 import { registerPlayerRoutes } from './routes/players.js';
+import { registerProjectRoutes } from './routes/projects.js';
 
 export function buildApp(db: Database.Database, uploadsDir: string) {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
@@ -32,6 +33,7 @@ export function buildApp(db: Database.Database, uploadsDir: string) {
   registerMiscRoutes(app);
   registerTaskRoutes(app, db);
   registerPlayerRoutes(app, db);
+  registerProjectRoutes(app, db, uploadsDir);
 
   return app;
 }
