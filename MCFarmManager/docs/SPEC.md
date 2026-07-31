@@ -101,18 +101,26 @@ malformed file rather than silently running with partial config).
       "storage": [
         { "id": "main-chest", "label": "Main output", "position": { "x": 123, "y": 79, "z": -501 } },
         { "id": "overflow", "label": "Overflow barrel", "position": { "x": 124, "y": 79, "z": -501 } }
-      ]
+      ],
+      "afkSpot": {                      // optional — players (real or fake) within radius count as occupants
+        "position": { "x": 118, "y": 81, "z": -498 },
+        "radius": 16
+      }
     }
   ]
 }
 ```
 
 Validation rules: `id` unique and non-empty, `dimension` a real registered dimension id,
-`entityScanRadius` positive, `storage[].position` distinct per farm. Storage entries support
+`entityScanRadius` positive, `storage[].position` distinct per farm, and when `afkSpot` is
+present its `position` is required and `radius` must be positive. Occupant matching is scoped
+to the farm's own `dimension` — a player at the same coordinates in another dimension does not
+count. Storage entries support
 any block with a Minecraft `Inventory` block entity (chest, trapped chest, barrel, shulker
-box, hopper, dispenser/dropper) — nested containers (shulker boxes stored inside a chest) are
-summarized by item id only, not recursively opened (that would require simulating an
-interaction chain no real player-less read should need).
+box, hopper, dispenser/dropper). Shulker boxes stored inside a scanned container have their
+contents read one level deep (via the item's `container` data component) and exposed as
+`shulkerContents`; that nested level is included in `storageItemCount` and in history samples.
+Nesting deeper than one level is not possible in vanilla, so there is no recursion.
 
 ## Carpet rules (mod-level toggles)
 
@@ -125,12 +133,14 @@ Registered by the extension, persisted via Carpet's own rule mechanism:
 | `mcfarmmanagerHttpBindAddress` | string | `0.0.0.0` | Bind address. LAN-trusted by design — see [Security posture](#security-posture). |
 | `mcfarmmanagerSampleIntervalMinutes` | int | `5` | How often farm history is sampled. |
 | `mcfarmmanagerHistoryRetentionDays` | int | `30` | Rows older than this are pruned on each sample cycle. |
+| `mcfarmmanagerApiToken` | string | `""` (empty) | Shared secret required in the `X-API-Token` header for the write endpoints. Empty means all writes are rejected with `403`. |
 
 ## HTTP API
 
-All responses are `application/json`. All endpoints are `GET` — this is a read-only system,
-there is nothing to `POST`, `PUT`, `PATCH`, or `DELETE`. Errors return a 4xx/5xx status with
-`{"error": "<message>"}`.
+All responses are `application/json`. The read endpoints are `GET` and unauthenticated; the
+farm-config write endpoints (`POST`/`PUT`/`DELETE /farms`) require the `X-API-Token` header —
+see [Farm config write endpoints](#farm-config-write-endpoints). Errors return a 4xx/5xx status
+with `{"error": "<message>"}`.
 
 ### `GET /farms`
 
@@ -146,7 +156,7 @@ Summary list, for the dashboard overview page.
       "entityCount": 12,
       "storageItemCount": 1836,
       "chunkLoaded": true,
-      "fakePlayerOnline": true
+      "occupantCount": 1
     }
   ]
 }
@@ -163,7 +173,9 @@ Full detail for one farm.
   "dimension": "minecraft:overworld",
   "anchor": { "x": 120, "y": 80, "z": -500 },
   "chunkLoaded": true,
-  "fakePlayer": { "name": "Worker-Iron", "online": true, "position": { "x": 118, "y": 81, "z": -498 } },
+  "occupants": [
+    { "name": "Worker-Iron", "isFakePlayer": true, "position": { "x": 118, "y": 81, "z": -498 } }
+  ],
   "entities": [
     { "id": "...", "type": "minecraft:iron_golem", "customName": null, "position": { "x": 121, "y": 80, "z": -499 }, "health": 100.0 }
   ],
@@ -173,7 +185,11 @@ Full detail for one farm.
       "label": "Main output",
       "position": { "x": 123, "y": 79, "z": -501 },
       "capacity": 27,
-      "items": [ { "itemId": "minecraft:iron_ingot", "count": 1728 } ]
+      "items": [
+        { "itemId": "minecraft:iron_ingot", "count": 1728, "shulkerContents": null },
+        { "itemId": "minecraft:shulker_box", "count": 1,
+          "shulkerContents": [ { "itemId": "minecraft:iron_ingot", "count": 1728, "shulkerContents": null } ] }
+      ]
     }
   ]
 }
@@ -202,6 +218,25 @@ Farm-only history (see [History](#history)). `range` accepts `1h`, `24h`, `7d`, 
 
 Raw samples, not downsampled — at a 5-minute default interval and a 30-day retention window
 this is at most ~8,640 rows per farm, trivially small to return and chart client-side.
+
+### Farm config write endpoints
+
+`POST /farms`, `PUT /farms/{id}` and `DELETE /farms/{id}` edit `farms.json` and hot-reload the
+in-memory farm list — no server restart. All three require an `X-API-Token` request header whose
+value matches the `mcfarmmanagerApiToken` Carpet rule; when that rule is empty (the default),
+every write is rejected. Writes are serialized under a single lock and the config file is
+replaced atomically, so a rejected request never leaves a partially-written file.
+
+| Method | Path | Body | Success |
+|---|---|---|---|
+| `POST` | `/farms` | one farm object, same shape as a `farms[]` entry | `201` with the farm summary |
+| `PUT` | `/farms/{id}` | one farm object whose `id` equals the URL `id` | `200` with the farm summary |
+| `DELETE` | `/farms/{id}` | none | `204`, empty body |
+
+Status codes: `400` for a malformed body, a body `id` that doesn't match the URL, or any config
+validation failure (message from the validator is echoed in `error`); `403` for a missing or
+wrong `X-API-Token`; `404` on `PUT`/`DELETE` of an unknown id; `500` if the mod hasn't finished
+initializing.
 
 ### `GET /players`
 

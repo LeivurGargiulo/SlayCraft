@@ -88,6 +88,9 @@ public final class FarmConfigLoader {
         }
         Set<Position> seenPositions = new HashSet<>();
         for (StorageConfig storage : farm.storage()) {
+            if (storage == null) {
+                throw new FarmConfigException("farm " + farm.id() + ": storage entry is null");
+            }
             if (storage.id() == null || storage.id().isEmpty()) {
                 throw new FarmConfigException("farm " + farm.id() + ": storage entry missing id");
             }

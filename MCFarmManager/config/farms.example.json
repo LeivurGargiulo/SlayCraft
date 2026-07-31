@@ -10,7 +10,8 @@
       "storage": [
         { "id": "main-chest", "label": "Main output", "position": { "x": 123, "y": 79, "z": -501 } },
         { "id": "overflow", "label": "Overflow barrel", "position": { "x": 124, "y": 79, "z": -501 } }
-      ]
+      ],
+      "afkSpot": { "position": { "x": 118, "y": 81, "z": -498 }, "radius": 16 }
     }
   ]
 }

@@ -217,8 +217,8 @@ public final class MCFarmManagerHttpServer {
             updated.add(candidate);
             try {
                 net.mcfarmmanager.mod.config.FarmConfigLoader.write(configPath, updated);
-            } catch (net.mcfarmmanager.mod.config.FarmConfigException e) {
-                respondJson(exchange, 400, Map.of("error", e.getMessage()));
+            } catch (RuntimeException e) {
+                respondJson(exchange, 400, Map.of("error", String.valueOf(e.getMessage())));
                 return;
             }
             net.mcfarmmanager.mod.MCFarmManagerMod.setFarms(updated);
@@ -260,8 +260,8 @@ public final class MCFarmManagerHttpServer {
             List<FarmConfig> updated = current.stream().map(f -> f.id().equals(id) ? candidate : f).toList();
             try {
                 net.mcfarmmanager.mod.config.FarmConfigLoader.write(configPath, updated);
-            } catch (net.mcfarmmanager.mod.config.FarmConfigException e) {
-                respondJson(exchange, 400, Map.of("error", e.getMessage()));
+            } catch (RuntimeException e) {
+                respondJson(exchange, 400, Map.of("error", String.valueOf(e.getMessage())));
                 return;
             }
             net.mcfarmmanager.mod.MCFarmManagerMod.setFarms(updated);
@@ -288,8 +288,8 @@ public final class MCFarmManagerHttpServer {
             List<FarmConfig> updated = current.stream().filter(f -> !f.id().equals(id)).toList();
             try {
                 net.mcfarmmanager.mod.config.FarmConfigLoader.write(configPath, updated);
-            } catch (net.mcfarmmanager.mod.config.FarmConfigException e) {
-                respondJson(exchange, 400, Map.of("error", e.getMessage()));
+            } catch (RuntimeException e) {
+                respondJson(exchange, 400, Map.of("error", String.valueOf(e.getMessage())));
                 return;
             }
             net.mcfarmmanager.mod.MCFarmManagerMod.setFarms(updated);
@@ -351,6 +351,7 @@ public final class MCFarmManagerHttpServer {
     private FarmSummary summarize(FarmConfig farm) {
         int storageItemCount = farmData.storage(farm).stream()
                 .flatMap(s -> s.items().stream())
+                .flatMap(net.mcfarmmanager.mod.data.ItemStackInfo::selfAndContents)
                 .mapToInt(item -> item.count())
                 .sum();
         return new FarmSummary(

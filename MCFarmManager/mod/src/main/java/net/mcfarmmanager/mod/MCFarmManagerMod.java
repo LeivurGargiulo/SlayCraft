@@ -16,7 +16,7 @@ public final class MCFarmManagerMod implements ModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger("mcfarmmanager");
 
     private static volatile List<FarmConfig> farms = List.of();
-    private static Path configPath;
+    private static volatile Path configPath;
 
     public static List<FarmConfig> farms() {
         return farms;

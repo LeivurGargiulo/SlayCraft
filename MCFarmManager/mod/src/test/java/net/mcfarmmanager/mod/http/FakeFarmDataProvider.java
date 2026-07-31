@@ -20,7 +20,9 @@ class FakeFarmDataProvider implements net.mcfarmmanager.mod.data.FarmDataProvide
     public List<StorageInfo> storage(FarmConfig farm) {
         return farm.storage().stream()
             .map(s -> new StorageInfo(s.id(), s.label(), s.position(), 27,
-                List.of(new ItemStackInfo("minecraft:iron_ingot", 1728, null))))
+                List.of(new ItemStackInfo("minecraft:iron_ingot", 1728, null),
+                    new ItemStackInfo("minecraft:shulker_box", 1,
+                        List.of(new ItemStackInfo("minecraft:iron_ingot", 1000, null))))))
             .toList();
     }
     @Override

@@ -181,10 +181,17 @@ public final class RealFarmDataProvider implements FarmDataProvider {
             return List.of();
         }
         return onMainThread(server, () -> {
+            ServerLevel level = level(farm, server);
+            if (level == null) {
+                return List.<OccupantInfo>of();
+            }
             Position center = farm.afkSpot().position();
             double radius = farm.afkSpot().radius();
             List<OccupantInfo> result = new ArrayList<>();
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if (player.level() != level) {
+                    continue;
+                }
                 BlockPos pos = player.blockPosition();
                 double dx = pos.getX() - center.x();
                 double dy = pos.getY() - center.y();

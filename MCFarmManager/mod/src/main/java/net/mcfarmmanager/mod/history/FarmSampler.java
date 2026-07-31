@@ -48,6 +48,7 @@ public final class FarmSampler {
                     .collect(Collectors.groupingBy(EntityInfo::type, Collectors.summingInt(e -> 1)));
             Map<String, Integer> storageCounts = farmData.storage(farm).stream()
                     .flatMap(s -> s.items().stream())
+                    .flatMap(ItemStackInfo::selfAndContents)
                     .collect(Collectors.groupingBy(ItemStackInfo::itemId, Collectors.summingInt(ItemStackInfo::count)));
             historyStore.recordSample(farm.id(), now, entityCounts, storageCounts);
         }

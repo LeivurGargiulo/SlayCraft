@@ -112,6 +112,15 @@ class FarmConfigLoaderTest {
     }
 
     @Test
+    void rejectsNullStorageEntry() throws IOException {
+        String json = """
+            { "farms": [ { "id": "iron", "name": "A", "dimension": "minecraft:overworld",
+              "anchor": {"x":0,"y":0,"z":0}, "entityScanRadius": 10, "storage": [ null ] } ] }
+            """;
+        assertThrows(FarmConfigException.class, () -> FarmConfigLoader.load(writeTemp(json)));
+    }
+
+    @Test
     void rejectsMalformedJson() throws IOException {
         assertThrows(FarmConfigException.class, () -> FarmConfigLoader.load(writeTemp("{ not json")));
     }
