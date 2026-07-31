@@ -1,8 +1,11 @@
 // dashboard/client/src/pages/Overview.tsx
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useTasks, useFarms, useLivePlayers, usePerformance } from '../api/hooks';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
+import { fadeUp, staggerContainer } from '../lib/motion';
+import { useAnimatedNumber } from '../lib/useAnimatedNumber';
 
 export default function Overview() {
   const tasks = useTasks();
@@ -20,44 +23,61 @@ export default function Overview() {
   );
   const healthyFarmCount = (farms.data?.farms.length ?? 0) - flaggedFarms.length;
 
+  const animatedTps = useAnimatedNumber(performance.data?.tps ?? 0);
+  const animatedPlayers = useAnimatedNumber(livePlayers.data?.players.length ?? 0);
+  const animatedHealthyFarms = useAnimatedNumber(healthyFarmCount);
+
   return (
     <div className="space-y-6">
       <h1 className="font-mono text-2xl text-gold">Resumen</h1>
 
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <div className="text-sm text-slate-400">TPS del servidor</div>
-          <div className={`font-mono text-3xl ${performance.data && performance.data.tps < 18 ? 'text-status-blocked' : 'text-status-done'}`}>
-            {performance.data ? performance.data.tps.toFixed(1) : '—'}
-          </div>
-        </Card>
-        <Card>
-          <div className="text-sm text-slate-400">Jugadores en línea</div>
-          <div className="font-mono text-3xl text-cyan">{livePlayers.data?.players.length ?? '—'}</div>
-        </Card>
-        <Card>
-          <div className="text-sm text-slate-400">Granjas saludables</div>
-          {farms.isError ? (
-            <div className="font-mono text-3xl text-status-blocked">—</div>
-          ) : (
-            <div className="font-mono text-3xl text-status-done">{healthyFarmCount}</div>
-          )}
-        </Card>
-      </div>
+      <motion.div
+        className="grid grid-cols-3 gap-4"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={fadeUp}>
+          <Card>
+            <div className="text-sm text-slate-400">TPS del servidor</div>
+            <div className={`font-mono text-3xl ${performance.data && performance.data.tps < 18 ? 'text-status-blocked' : 'text-status-done'}`}>
+              {performance.data ? animatedTps.toFixed(1) : '—'}
+            </div>
+          </Card>
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <Card>
+            <div className="text-sm text-slate-400">Jugadores en línea</div>
+            <div className="font-mono text-3xl text-cyan">{livePlayers.data ? Math.round(animatedPlayers) : '—'}</div>
+          </Card>
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <Card>
+            <div className="text-sm text-slate-400">Granjas saludables</div>
+            {farms.isError ? (
+              <div className="font-mono text-3xl text-status-blocked">—</div>
+            ) : (
+              <div className="font-mono text-3xl text-status-done">{Math.round(animatedHealthyFarms)}</div>
+            )}
+          </Card>
+        </motion.div>
+      </motion.div>
 
       <section>
         <h2 className="mb-2 font-mono text-lg text-slate-200">Tareas que necesitan atención</h2>
         {needsAttention.length === 0 ? (
           <p className="text-sm text-slate-500">No hay tareas urgentes. Bien ahí.</p>
         ) : (
-          <div className="space-y-2">
+          <motion.div className="space-y-2" variants={staggerContainer} initial="hidden" animate="show">
             {needsAttention.slice(0, 5).map((t) => (
-              <Card key={t.id} className="flex items-center justify-between">
-                <span>{t.title}</span>
-                <StatusBadge status={t.status} />
-              </Card>
+              <motion.div key={t.id} variants={fadeUp}>
+                <Card className="flex items-center justify-between">
+                  <span>{t.title}</span>
+                  <StatusBadge status={t.status} />
+                </Card>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
         <Link to="/tareas" className="mt-2 inline-block text-sm text-cyan hover:underline">
           Ver todas las tareas →
@@ -71,14 +91,16 @@ export default function Overview() {
         ) : flaggedFarms.length === 0 ? (
           <p className="text-sm text-slate-500">Todas las granjas están al día.</p>
         ) : (
-          <div className="space-y-2">
+          <motion.div className="space-y-2" variants={staggerContainer} initial="hidden" animate="show">
             {flaggedFarms.map((f) => (
-              <Card key={f.id} className="flex items-center justify-between">
-                <span>{f.name}</span>
-                <StatusBadge status={f.occupantCount > 0 ? 'online' : 'offline'} />
-              </Card>
+              <motion.div key={f.id} variants={fadeUp}>
+                <Card className="flex items-center justify-between">
+                  <span>{f.name}</span>
+                  <StatusBadge status={f.occupantCount > 0 ? 'online' : 'offline'} />
+                </Card>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
         <Link to="/granjas" className="mt-2 inline-block text-sm text-cyan hover:underline">
           Ver todas las granjas →
