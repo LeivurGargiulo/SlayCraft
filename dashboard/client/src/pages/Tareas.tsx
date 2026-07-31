@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   useTasks, useCreateTask, useUpdateTask, useDeleteTask,
   useAddSubtask, useUpdateSubtask, usePlayers, useFarms, useProjects,
@@ -32,11 +33,14 @@ export default function Tareas() {
   const [farmFilter, setFarmFilter] = useState<string | 'all'>('all');
   const [projectFilter, setProjectFilter] = useState<number | 'all'>('all');
 
-  const [form, setForm] = useState({ title: '', description: '', priority: 'med' as TaskPriority, due_date: '', assignee_ids: [] as number[] });
+  const [form, setForm] = useState({
+    title: '', description: '', priority: 'med' as TaskPriority, due_date: '',
+    assignee_ids: [] as number[], farm_id: '' as string, project_id: '' as string,
+  });
 
   function openCreate() {
     setEditing(null);
-    setForm({ title: '', description: '', priority: 'med', due_date: '', assignee_ids: [] });
+    setForm({ title: '', description: '', priority: 'med', due_date: '', assignee_ids: [], farm_id: '', project_id: '' });
     setModalOpen(true);
   }
 
@@ -48,6 +52,8 @@ export default function Tareas() {
       priority: t.priority,
       due_date: t.due_date ?? '',
       assignee_ids: t.assignees.map((a) => a.id),
+      farm_id: t.farm_id ?? '',
+      project_id: t.project_id ? String(t.project_id) : '',
     });
     setModalOpen(true);
   }
@@ -59,6 +65,8 @@ export default function Tareas() {
       priority: form.priority,
       due_date: form.due_date || null,
       assignee_ids: form.assignee_ids,
+      farm_id: form.farm_id || null,
+      project_id: form.project_id ? Number(form.project_id) : null,
     };
     if (editing) await updateTask.mutateAsync({ id: editing.id, ...payload });
     else await createTask.mutateAsync(payload);
@@ -164,6 +172,24 @@ export default function Tareas() {
                   {t.due_date && <span>Vence: {t.due_date}</span>}
                   {t.assignees.length > 0 && <span>Asignada a: {t.assignees.map((a) => a.minecraft_name).join(', ')}</span>}
                 </div>
+                <div className="mt-1 flex gap-2">
+                  {t.farm_id && (
+                    <Link
+                      to={`/granjas/${t.farm_id}`}
+                      className="rounded bg-panel px-2 py-0.5 text-xs text-cyan hover:underline"
+                    >
+                      {farms.data?.farms.find((f) => f.id === t.farm_id)?.name ?? t.farm_id}
+                    </Link>
+                  )}
+                  {t.project_id && (
+                    <Link
+                      to={`/proyectos/${t.project_id}`}
+                      className="rounded bg-panel px-2 py-0.5 text-xs text-cyan hover:underline"
+                    >
+                      {projects.data?.projects.find((p) => p.id === t.project_id)?.name ?? t.project_id}
+                    </Link>
+                  )}
+                </div>
               </div>
               <div className="flex gap-2">
                 <select
@@ -255,6 +281,32 @@ export default function Tareas() {
               onChange={(e) => setForm({ ...form, due_date: e.target.value })}
               className="rounded border border-border bg-base px-3 py-2"
             />
+          </div>
+          <div className="flex gap-2">
+            <select
+              value={form.farm_id}
+              onChange={(e) => setForm({ ...form, farm_id: e.target.value })}
+              className="flex-1 rounded border border-border bg-base px-3 py-2"
+            >
+              <option value="">Sin asignar (granja)</option>
+              {(farms.data?.farms ?? []).map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={form.project_id}
+              onChange={(e) => setForm({ ...form, project_id: e.target.value })}
+              className="flex-1 rounded border border-border bg-base px-3 py-2"
+            >
+              <option value="">Sin asignar (proyecto)</option>
+              {(projects.data?.projects ?? []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <div className="mb-1 text-sm text-slate-400">Asignar a</div>
