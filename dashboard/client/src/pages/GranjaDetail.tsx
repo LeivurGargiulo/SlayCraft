@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useFarm, useFarmHistory, useUpdateFarmMetadata } from '../api/hooks';
+import { useFarm, useFarmHistory, useUpdateFarmMetadata, useUploadFarmImage, useDeleteFarmImage } from '../api/hooks';
 import Card from '../components/Card';
 
 export default function GranjaDetail() {
@@ -8,6 +8,9 @@ export default function GranjaDetail() {
   const farm = useFarm(id!);
   const history = useFarmHistory(id!, '24h');
   const updateMetadata = useUpdateFarmMetadata();
+  const uploadImage = useUploadFarmImage();
+  const deleteImage = useDeleteFarmImage();
+  const fileInput = useRef<HTMLInputElement>(null);
   const [notes, setNotes] = useState('');
   const [tags, setTags] = useState('');
   const [editingMeta, setEditingMeta] = useState(false);
@@ -29,6 +32,12 @@ export default function GranjaDetail() {
       tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
     });
     setEditingMeta(false);
+  }
+
+  async function onFileChange() {
+    const file = fileInput.current?.files?.[0];
+    if (file) await uploadImage.mutateAsync({ farmId: f.id, file });
+    if (fileInput.current) fileInput.current.value = '';
   }
 
   return (
@@ -154,6 +163,26 @@ export default function GranjaDetail() {
         ) : (
           <p className="text-sm text-slate-500">Sin datos históricos todavía.</p>
         )}
+      </Card>
+
+      <Card>
+        <h2 className="mb-2 font-mono text-slate-200">Imágenes</h2>
+        <div className="grid grid-cols-4 gap-2">
+          {f.images.map((img) => (
+            <div key={img.id} className="relative">
+              <img src={`/uploads/${img.path}`} alt={img.caption ?? ''} className="h-24 w-full rounded object-cover" />
+              <button
+                onClick={() => deleteImage.mutate(img.id)}
+                className="absolute right-1 top-1 rounded bg-black/60 px-1 text-xs text-status-blocked"
+                aria-label="Eliminar imagen"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+        <input ref={fileInput} type="file" accept="image/*" onChange={onFileChange} className="mt-3 text-sm" />
+        {uploadImage.isError && <p className="mt-2 text-sm text-status-blocked">{uploadImage.error.message}</p>}
       </Card>
     </div>
   );
