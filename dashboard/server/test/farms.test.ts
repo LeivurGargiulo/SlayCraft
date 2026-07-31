@@ -31,6 +31,31 @@ test('GET /api/farms returns 502 when MCFarmManager is unreachable', async (t) =
   assert.equal(res.statusCode, 502);
 });
 
+test('GET /api/farms reports offline once flow into storage has stopped, even if storage stays full', async (t) => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+
+  const now = Date.now();
+  const sampleAt = (minutesAgo: number) => new Date(now - minutesAgo * 60 * 1000).toISOString();
+  const samples = [
+    { sampledAt: sampleAt(60), storageCounts: { iron_ingot: 0 } },
+    { sampledAt: sampleAt(45), storageCounts: { iron_ingot: 100 } },
+    { sampledAt: sampleAt(30), storageCounts: { iron_ingot: 320 } },
+    { sampledAt: sampleAt(20), storageCounts: { iron_ingot: 320 } },
+    { sampledAt: sampleAt(10), storageCounts: { iron_ingot: 320 } },
+    { sampledAt: sampleAt(0), storageCounts: { iron_ingot: 320 } },
+  ];
+
+  const fetchMock = mock.method(globalThis, 'fetch', async (url: string) => {
+    if (url.includes('/history')) return new Response(JSON.stringify({ samples }), { status: 200 });
+    return new Response(JSON.stringify({ farms: [{ id: 'iron', name: 'Iron Farm', occupantCount: 0 }] }), { status: 200 });
+  });
+  t.after(() => fetchMock.mock.restore());
+
+  const res = await app.inject({ method: 'GET', url: '/api/farms', headers: { cookie } });
+  assert.equal(res.json().farms[0].online, false);
+});
+
 test('PATCH /api/farms/:id/metadata upserts notes, tags, and coordinates', async () => {
   const { app, db } = makeApp();
   const cookie = await loginAndGetCookie(app, db);

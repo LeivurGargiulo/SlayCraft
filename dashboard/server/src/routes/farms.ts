@@ -32,13 +32,18 @@ function getImages(db: Database.Database, farmId: string) {
   return db.prepare('SELECT * FROM farm_images WHERE farm_id = ? ORDER BY sort_order').all(farmId);
 }
 
+const PRODUCING_WINDOW_MS = 15 * 60 * 1000;
+
 async function isProducing(id: string): Promise<boolean> {
   const data = (await mcfmFetch(`/farms/${encodeURIComponent(id)}/history?range=1h`)) as {
-    samples: Array<{ storageCounts: Record<string, number> }>;
+    samples: Array<{ sampledAt: string; storageCounts: Record<string, number> }>;
   };
   if (!Array.isArray(data.samples) || data.samples.length < 2) return false;
   const total = (counts: Record<string, number>) => Object.values(counts).reduce((sum, n) => sum + n, 0);
-  return total(data.samples[data.samples.length - 1].storageCounts) > total(data.samples[0].storageCounts);
+  const last = data.samples[data.samples.length - 1];
+  const windowStart = new Date(last.sampledAt).getTime() - PRODUCING_WINDOW_MS;
+  const baseline = data.samples.find((s) => new Date(s.sampledAt).getTime() >= windowStart) ?? last;
+  return total(last.storageCounts) > total(baseline.storageCounts);
 }
 
 async function withMcfm<T>(reply: import('fastify').FastifyReply, fn: () => Promise<T>) {
