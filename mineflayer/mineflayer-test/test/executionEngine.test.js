@@ -189,6 +189,31 @@ test('resume after crash: stock rebuild is correct and no double-execution', asy
   db.close();
 });
 
+test('place-only job succeeds when the bot already carries stock from a prior job', async () => {
+  const db = createTestDb();
+  const blockMap = {};
+  // Solid floor so the place has somewhere to attach to; no breakable blocks
+  // at all - this job (unlike earlier jobs on the same region) has nothing
+  // left to dig, only fill.
+  setBlock(blockMap, { x: 0, y: 63, z: 0 }, 1, 'stone');
+
+  const jobId = db.enqueue('flatten', 'player1', '{}', [
+    { action: 'place', x: 0, y: 64, z: 0 },
+  ]);
+
+  // The bot is already holding dirt from an earlier job's digging, not from
+  // anything done in this job.
+  const bot = createFakeBot(blockMap, { dirt: 3 });
+  const engine = new ExecutionEngine(bot, db);
+  await engine.runJob(jobId);
+
+  const status = db.getStatus(jobId);
+  assert.strictEqual(status.status, 'completed', 'a place-only job must succeed using real carried-over inventory, not a per-job stock counter');
+  assert.ok(blockMap['0,64,0'], 'the block should actually have been placed');
+
+  db.close();
+});
+
 test('stop requested mid-job: runJob exits early and marks the job cancelled', async () => {
   const db = createTestDb();
   const blockMap = {};

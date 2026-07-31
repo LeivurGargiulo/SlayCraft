@@ -65,7 +65,6 @@ class ExecutionEngine {
 
   async runJob(jobId) {
     this.aborted = false;
-    const stock = this._rebuildStock(jobId);
     const pending = this.jobManager.getPendingActions(jobId);
 
     const interval = setInterval(() => {
@@ -96,9 +95,9 @@ class ExecutionEngine {
         }
 
         if (row.action === 'break') {
-          await this._runBreak(jobId, row, stock);
+          await this._runBreak(jobId, row);
         } else if (row.action === 'place') {
-          await this._runPlace(jobId, row, stock);
+          await this._runPlace(jobId, row);
         }
       }
     } finally {
@@ -118,33 +117,12 @@ class ExecutionEngine {
     this.jobManager.markJobStatus(jobId, failed ? 'failed' : 'completed');
   }
 
-  // Rebuilds the in-memory fill-stock map from actions already marked done,
-  // so a resumed job (after a crash) starts with the correct counts instead
-  // of a separately-persisted (and driftable) counter. Uses a Map (not a
-  // plain object) so a `null` block_type (flatten never sets one) stays the
-  // actual value `null` instead of being coerced to the string "null" as an
-  // object key would - otherwise a resumed place action could try to equip
-  // the literal string "null" as an item name.
-  _rebuildStock(jobId) {
-    const stock = new Map();
-    for (const row of this.jobManager.getDoneActions(jobId)) {
-      if (row.action === 'break') {
-        stock.set(row.block_type, (stock.get(row.block_type) ?? 0) + 1);
-      } else if (row.action === 'place') {
-        stock.set(row.block_type, (stock.get(row.block_type) ?? 0) - 1);
-      }
-    }
-    return stock;
-  }
-
-  async _runBreak(jobId, row, stock) {
+  async _runBreak(jobId, row) {
     const pos = new Vec3(row.x, row.y, row.z);
     try {
       await this._gotoWithTimeout(new goals.GoalNear(pos.x, pos.y, pos.z, 1));
       const block = this.bot.blockAt(pos);
       await this.bot.dig(block);
-      const blockType = block ? block.name : row.block_type;
-      stock.set(blockType, (stock.get(blockType) ?? 0) + 1);
       this.jobManager.markActionDone(jobId, row.seq);
     } catch (err) {
       console.error(`[executionEngine] job ${jobId} seq ${row.seq} (${row.action}) failed: ${err.message}`);
@@ -152,21 +130,18 @@ class ExecutionEngine {
     }
   }
 
-  async _runPlace(jobId, row, stock) {
-    const blockType = this._pickStockedBlockType(row.block_type, stock);
-    if (blockType === undefined) {
-      this.jobManager.markActionFailed(jobId, row.seq, NO_STOCK_ERROR);
-      return;
-    }
-
+  async _runPlace(jobId, row) {
     // mineflayer's equip() needs a real inventory Item, never a name string.
-    // The in-memory stock map counts *broken block* names, which don't always
-    // match the item actually dropped (stone -> cobblestone, grass_block ->
-    // dirt), so an exact-name miss is normal: fall back to whatever placeable
-    // item we're actually holding. The stock map stays a pure counter.
+    // Resolved against the bot's actual live inventory (not a per-job
+    // simulated counter) - stock carried over from an earlier job, or
+    // manually given items, is real stock, and a job with no break actions
+    // of its own (region already flattened by a prior job) must still be
+    // able to fill using it. An exact block-type match is preferred but not
+    // required, since the broken block's name doesn't always match its drop
+    // (stone -> cobblestone, grass_block -> dirt).
     // ponytail: no drop-table mapping; fall back to any inventory item. Add a
     // real block->drop table only if fill-material fidelity ever matters.
-    const item = this._resolveInventoryItem(blockType);
+    const item = this._resolveInventoryItem(row.block_type);
     if (!item) {
       this.jobManager.markActionFailed(jobId, row.seq, NO_STOCK_ERROR);
       return;
@@ -181,26 +156,11 @@ class ExecutionEngine {
       await this._gotoWithTimeout(new goals.GoalNear(pos.x, pos.y, pos.z, 1));
       await this.bot.equip(item, 'hand');
       await this.bot.placeBlock(reference.referenceBlock, reference.faceVector);
-      stock.set(blockType, stock.get(blockType) - 1);
       this.jobManager.markActionDone(jobId, row.seq);
     } catch (err) {
       console.error(`[executionEngine] job ${jobId} seq ${row.seq} (${row.action}) failed: ${err.message}`);
       this.jobManager.markActionFailed(jobId, row.seq, err.message);
     }
-  }
-
-  // Prefers the action's own requested block_type if we have stock for it,
-  // otherwise falls back to whatever stocked type is available. Returns
-  // `undefined` (not `null`) when nothing is stocked, since `null` is itself
-  // a legitimate stock key (flatten's compiler never sets a block_type).
-  _pickStockedBlockType(preferredType, stock) {
-    if (stock.get(preferredType) > 0) {
-      return preferredType;
-    }
-    for (const [type, count] of stock) {
-      if (count > 0) return type;
-    }
-    return undefined;
   }
 
   // Resolves the Item to equip: the requested name if we're really holding it,
