@@ -15,13 +15,20 @@ import FileUploadButton from '../components/FileUploadButton';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
 import Checkbox from '../components/Checkbox';
-import Select from '../components/Select';
+import Select, { type SelectOption } from '../components/Select';
+import HistoryChart from '../components/HistoryChart';
 import type { StorageItem, FarmDetail as FarmDetailType } from '../api/types';
 
 const DIMENSIONS = [
   { value: 'minecraft:overworld', label: 'Overworld' },
   { value: 'minecraft:the_nether', label: 'Nether' },
   { value: 'minecraft:the_end', label: 'End' },
+];
+
+const HISTORY_RANGES: SelectOption<'1h' | '24h' | '7d'>[] = [
+  { value: '1h', label: '1 hora' },
+  { value: '24h', label: '24 horas' },
+  { value: '7d', label: '7 días' },
 ];
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -89,7 +96,8 @@ export default function GranjaDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const farm = useFarm(id!);
-  const history = useFarmHistory(id!, '24h');
+  const [historyRange, setHistoryRange] = useState<'1h' | '24h' | '7d'>('24h');
+  const history = useFarmHistory(id!, historyRange);
   const rateHistory = useFarmHistory(id!, '1h');
   const updateMetadata = useUpdateFarmMetadata();
   const uploadImage = useUploadFarmImage();
@@ -387,12 +395,11 @@ export default function GranjaDetail() {
       </Card>
 
       <Card>
-        <h2 className="mb-2 font-mono text-slate-200">Historial (24h)</h2>
-        {history.data && history.data.samples.length > 0 ? (
-          <p className="text-sm text-slate-400">{history.data.samples.length} muestras registradas.</p>
-        ) : (
-          <p className="text-sm text-slate-500">Sin datos históricos todavía.</p>
-        )}
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="font-mono text-slate-200">Historial</h2>
+          <Select value={historyRange} onChange={setHistoryRange} options={HISTORY_RANGES} className="w-32" />
+        </div>
+        {history.data ? <HistoryChart samples={history.data.samples} /> : <p className="text-sm text-slate-500">Cargando…</p>}
       </Card>
 
       <Card>
