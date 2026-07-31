@@ -14,8 +14,10 @@ function createTestDb() {
  */
 function createFakeBot(blockMap) {
   const key = (pos) => `${pos.x},${pos.y},${pos.z}`;
+  const equipCalls = [];
 
   const bot = {
+    equipCalls,
     blockAt(pos) {
       return blockMap[key(pos)] ?? null;
     },
@@ -25,7 +27,9 @@ function createFakeBot(blockMap) {
       }
       delete blockMap[key(block.position)];
     },
-    async equip() {},
+    async equip(itemName, destination) {
+      equipCalls.push({ itemName, destination });
+    },
     async placeBlock(referenceBlock, faceVector) {
       const pos = {
         x: referenceBlock.position.x + faceVector.x,
@@ -94,7 +98,10 @@ test('resume after crash: stock rebuild is correct and no double-execution', asy
   const jobId = db.enqueue('flatten', 'player1', '{}', [
     { action: 'break', x: 0, y: 65, z: 0 },
     { action: 'break', x: 1, y: 65, z: 0 },
-    { action: 'place', x: 0, y: 64, z: 0 },
+    // Explicit block_type here forces the engine to draw on the *live*-dug
+    // "dirt" stock rather than the null-keyed rebuilt pool, so we can assert
+    // equip() sees a real block name.
+    { action: 'place', x: 0, y: 64, z: 0, block_type: 'dirt' },
     { action: 'place', x: 1, y: 64, z: 0 },
   ]);
 
@@ -128,6 +135,20 @@ test('resume after crash: stock rebuild is correct and no double-execution', asy
   assert.strictEqual(doneActions.length, 4, 'all 4 actions marked done');
   assert.ok(blockMap['0,64,0'], 'place at 0,64,0 should have happened using rebuilt stock');
   assert.ok(blockMap['1,64,0'], 'place at 1,64,0 should have happened using rebuilt stock');
+
+  // Regression check: stock must be keyed by a real Map (not a plain object),
+  // so a `null` block_type is never coerced into the string "null" and handed
+  // to bot.equip - that string is not a real item name and would fail equip
+  // for real in mineflayer.
+  assert.strictEqual(bot.equipCalls.length, 2, 'both place actions should have equipped an item');
+  assert.ok(
+    bot.equipCalls.some((c) => c.itemName === 'dirt'),
+    'the place action requesting "dirt" should equip the real block name'
+  );
+  assert.ok(
+    bot.equipCalls.every((c) => c.itemName !== 'null'),
+    'equip should never be called with the coerced string "null"'
+  );
 
   db.close();
 });

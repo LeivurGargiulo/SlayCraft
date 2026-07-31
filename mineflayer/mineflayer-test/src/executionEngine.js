@@ -52,14 +52,18 @@ class ExecutionEngine {
 
   // Rebuilds the in-memory fill-stock map from actions already marked done,
   // so a resumed job (after a crash) starts with the correct counts instead
-  // of a separately-persisted (and driftable) counter.
+  // of a separately-persisted (and driftable) counter. Uses a Map (not a
+  // plain object) so a `null` block_type (flatten never sets one) stays the
+  // actual value `null` instead of being coerced to the string "null" as an
+  // object key would - otherwise a resumed place action could try to equip
+  // the literal string "null" as an item name.
   _rebuildStock(jobId) {
-    const stock = {};
+    const stock = new Map();
     for (const row of this.jobManager.getDoneActions(jobId)) {
       if (row.action === 'break') {
-        stock[row.block_type] = (stock[row.block_type] ?? 0) + 1;
+        stock.set(row.block_type, (stock.get(row.block_type) ?? 0) + 1);
       } else if (row.action === 'place') {
-        stock[row.block_type] = (stock[row.block_type] ?? 0) - 1;
+        stock.set(row.block_type, (stock.get(row.block_type) ?? 0) - 1);
       }
     }
     return stock;
@@ -72,7 +76,7 @@ class ExecutionEngine {
       const block = this.bot.blockAt(pos);
       await this.bot.dig(block);
       const blockType = block ? block.name : row.block_type;
-      stock[blockType] = (stock[blockType] ?? 0) + 1;
+      stock.set(blockType, (stock.get(blockType) ?? 0) + 1);
       this.jobManager.markActionDone(jobId, row.seq);
     } catch (err) {
       this.jobManager.markActionFailed(jobId, row.seq, err.message);
@@ -81,7 +85,7 @@ class ExecutionEngine {
 
   async _runPlace(jobId, row, stock) {
     const blockType = this._pickStockedBlockType(row.block_type, stock);
-    if (blockType === null) {
+    if (blockType === undefined) {
       this.jobManager.markActionFailed(jobId, row.seq, NO_STOCK_ERROR);
       return;
     }
@@ -95,7 +99,7 @@ class ExecutionEngine {
       await this.bot.pathfinder.goto(new goals.GoalNear(pos.x, pos.y, pos.z, 1));
       await this.bot.equip(blockType, 'hand');
       await this.bot.placeBlock(reference.referenceBlock, reference.faceVector);
-      stock[blockType] -= 1;
+      stock.set(blockType, stock.get(blockType) - 1);
       this.jobManager.markActionDone(jobId, row.seq);
     } catch (err) {
       this.jobManager.markActionFailed(jobId, row.seq, err.message);
@@ -103,13 +107,17 @@ class ExecutionEngine {
   }
 
   // Prefers the action's own requested block_type if we have stock for it,
-  // otherwise falls back to whatever stocked type is available.
+  // otherwise falls back to whatever stocked type is available. Returns
+  // `undefined` (not `null`) when nothing is stocked, since `null` is itself
+  // a legitimate stock key (flatten's compiler never sets a block_type).
   _pickStockedBlockType(preferredType, stock) {
-    if (preferredType != null && stock[preferredType] > 0) {
+    if (stock.get(preferredType) > 0) {
       return preferredType;
     }
-    const fallback = Object.keys(stock).find((type) => stock[type] > 0);
-    return fallback !== undefined ? fallback : null;
+    for (const [type, count] of stock) {
+      if (count > 0) return type;
+    }
+    return undefined;
   }
 
   // Finds a solid neighbor block adjacent to pos to place against, and the
