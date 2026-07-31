@@ -23,6 +23,7 @@ public final class MCFarmManagerMod implements ModInitializer {
     }
 
     public static void setFarms(List<FarmConfig> updated) {
+        FarmConfigLoader.validateAll(updated);
         farms = updated;
     }
 

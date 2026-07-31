@@ -131,4 +131,20 @@ class MCFarmManagerHttpServerTest {
         assertEquals(200, response.statusCode());
         assertTrue(response.body().contains("\"farmCount\":1"));
     }
+
+    @Test
+    void writesWithoutTokenReturn403() throws Exception {
+        String body = "{\"id\":\"gold\"}";
+        HttpRequest post = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/farms"))
+                .POST(HttpRequest.BodyPublishers.ofString(body)).build();
+        assertEquals(403, client.send(post, HttpResponse.BodyHandlers.ofString()).statusCode());
+
+        HttpRequest put = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/farms/iron"))
+                .PUT(HttpRequest.BodyPublishers.ofString(body)).build();
+        assertEquals(403, client.send(put, HttpResponse.BodyHandlers.ofString()).statusCode());
+
+        HttpRequest delete = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/farms/iron"))
+                .DELETE().build();
+        assertEquals(403, client.send(delete, HttpResponse.BodyHandlers.ofString()).statusCode());
+    }
 }

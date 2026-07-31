@@ -40,6 +40,7 @@ public final class MCFarmManagerHttpServer {
     private final int port;
     private final String bindAddress;
     private final Gson gson = new GsonBuilder().serializeNulls().create();
+    private final Object writeLock = new Object();
     private HttpServer httpServer;
 
     public MCFarmManagerHttpServer(java.util.function.Supplier<List<FarmConfig>> farmsSupplier, FarmDataProvider farmData,
@@ -201,16 +202,27 @@ public final class MCFarmManagerHttpServer {
             respondJson(exchange, 400, Map.of("error", "malformed JSON body"));
             return;
         }
-        List<FarmConfig> current = farmsSupplier.get();
-        List<FarmConfig> updated = new java.util.ArrayList<>(current);
-        updated.add(candidate);
-        try {
-            net.mcfarmmanager.mod.config.FarmConfigLoader.write(net.mcfarmmanager.mod.MCFarmManagerMod.configPath(), updated);
-        } catch (net.mcfarmmanager.mod.config.FarmConfigException e) {
-            respondJson(exchange, 400, Map.of("error", e.getMessage()));
+        if (candidate == null) {
+            respondJson(exchange, 400, Map.of("error", "malformed JSON body"));
             return;
         }
-        net.mcfarmmanager.mod.MCFarmManagerMod.setFarms(updated);
+        java.nio.file.Path configPath = net.mcfarmmanager.mod.MCFarmManagerMod.configPath();
+        if (configPath == null) {
+            respondJson(exchange, 500, Map.of("error", "server not fully initialized"));
+            return;
+        }
+        synchronized (writeLock) {
+            List<FarmConfig> current = farmsSupplier.get();
+            List<FarmConfig> updated = new java.util.ArrayList<>(current);
+            updated.add(candidate);
+            try {
+                net.mcfarmmanager.mod.config.FarmConfigLoader.write(configPath, updated);
+            } catch (net.mcfarmmanager.mod.config.FarmConfigException e) {
+                respondJson(exchange, 400, Map.of("error", e.getMessage()));
+                return;
+            }
+            net.mcfarmmanager.mod.MCFarmManagerMod.setFarms(updated);
+        }
         respondJson(exchange, 201, summarize(candidate));
     }
 
@@ -226,23 +238,34 @@ public final class MCFarmManagerHttpServer {
             respondJson(exchange, 400, Map.of("error", "malformed JSON body"));
             return;
         }
+        if (candidate == null) {
+            respondJson(exchange, 400, Map.of("error", "malformed JSON body"));
+            return;
+        }
         if (candidate.id() == null || !candidate.id().equals(id)) {
             respondJson(exchange, 400, Map.of("error", "body id must match URL id"));
             return;
         }
-        List<FarmConfig> current = farmsSupplier.get();
-        if (current.stream().noneMatch(f -> f.id().equals(id))) {
-            respondJson(exchange, 404, Map.of("error", "unknown farm: " + id));
+        java.nio.file.Path configPath = net.mcfarmmanager.mod.MCFarmManagerMod.configPath();
+        if (configPath == null) {
+            respondJson(exchange, 500, Map.of("error", "server not fully initialized"));
             return;
         }
-        List<FarmConfig> updated = current.stream().map(f -> f.id().equals(id) ? candidate : f).toList();
-        try {
-            net.mcfarmmanager.mod.config.FarmConfigLoader.write(net.mcfarmmanager.mod.MCFarmManagerMod.configPath(), updated);
-        } catch (net.mcfarmmanager.mod.config.FarmConfigException e) {
-            respondJson(exchange, 400, Map.of("error", e.getMessage()));
-            return;
+        synchronized (writeLock) {
+            List<FarmConfig> current = farmsSupplier.get();
+            if (current.stream().noneMatch(f -> f.id().equals(id))) {
+                respondJson(exchange, 404, Map.of("error", "unknown farm: " + id));
+                return;
+            }
+            List<FarmConfig> updated = current.stream().map(f -> f.id().equals(id) ? candidate : f).toList();
+            try {
+                net.mcfarmmanager.mod.config.FarmConfigLoader.write(configPath, updated);
+            } catch (net.mcfarmmanager.mod.config.FarmConfigException e) {
+                respondJson(exchange, 400, Map.of("error", e.getMessage()));
+                return;
+            }
+            net.mcfarmmanager.mod.MCFarmManagerMod.setFarms(updated);
         }
-        net.mcfarmmanager.mod.MCFarmManagerMod.setFarms(updated);
         respondJson(exchange, summarize(candidate));
     }
 
@@ -251,19 +274,26 @@ public final class MCFarmManagerHttpServer {
             respondJson(exchange, 403, Map.of("error", "missing or invalid X-API-Token"));
             return;
         }
-        List<FarmConfig> current = farmsSupplier.get();
-        if (current.stream().noneMatch(f -> f.id().equals(id))) {
-            respondJson(exchange, 404, Map.of("error", "unknown farm: " + id));
+        java.nio.file.Path configPath = net.mcfarmmanager.mod.MCFarmManagerMod.configPath();
+        if (configPath == null) {
+            respondJson(exchange, 500, Map.of("error", "server not fully initialized"));
             return;
         }
-        List<FarmConfig> updated = current.stream().filter(f -> !f.id().equals(id)).toList();
-        try {
-            net.mcfarmmanager.mod.config.FarmConfigLoader.write(net.mcfarmmanager.mod.MCFarmManagerMod.configPath(), updated);
-        } catch (net.mcfarmmanager.mod.config.FarmConfigException e) {
-            respondJson(exchange, 400, Map.of("error", e.getMessage()));
-            return;
+        synchronized (writeLock) {
+            List<FarmConfig> current = farmsSupplier.get();
+            if (current.stream().noneMatch(f -> f.id().equals(id))) {
+                respondJson(exchange, 404, Map.of("error", "unknown farm: " + id));
+                return;
+            }
+            List<FarmConfig> updated = current.stream().filter(f -> !f.id().equals(id)).toList();
+            try {
+                net.mcfarmmanager.mod.config.FarmConfigLoader.write(configPath, updated);
+            } catch (net.mcfarmmanager.mod.config.FarmConfigException e) {
+                respondJson(exchange, 400, Map.of("error", e.getMessage()));
+                return;
+            }
+            net.mcfarmmanager.mod.MCFarmManagerMod.setFarms(updated);
         }
-        net.mcfarmmanager.mod.MCFarmManagerMod.setFarms(updated);
         exchange.sendResponseHeaders(204, -1);
     }
 

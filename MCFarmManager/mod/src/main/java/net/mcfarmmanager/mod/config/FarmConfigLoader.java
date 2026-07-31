@@ -53,6 +53,7 @@ public final class FarmConfigLoader {
         String json = new com.google.gson.GsonBuilder().setPrettyPrinting().create()
                 .toJson(new FarmsFile(farms));
         try {
+            Files.createDirectories(jsonFile.getParent());
             Path tmp = jsonFile.resolveSibling(jsonFile.getFileName() + ".tmp");
             Files.writeString(tmp, json);
             Files.move(tmp, jsonFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
