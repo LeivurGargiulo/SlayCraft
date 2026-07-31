@@ -9,5 +9,6 @@ public record FarmConfig(
     Position anchor,
     int entityScanRadius,
     String fakePlayerName,
-    List<StorageConfig> storage
+    List<StorageConfig> storage,
+    AfkSpot afkSpot
 ) {}

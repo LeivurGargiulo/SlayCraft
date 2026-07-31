@@ -26,7 +26,7 @@ class MCFarmManagerHttpServerTest {
     private List<FarmConfig> farms() {
         return List.of(new FarmConfig("iron", "Iron Farm", "minecraft:overworld",
             new Position(120, 80, -500), 32, "Worker-Iron",
-            List.of(new StorageConfig("main-chest", "Main output", new Position(123, 79, -501)))));
+            List.of(new StorageConfig("main-chest", "Main output", new Position(123, 79, -501))), null));
     }
 
     @BeforeEach

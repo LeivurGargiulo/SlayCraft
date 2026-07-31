@@ -77,5 +77,13 @@ public final class FarmConfigLoader {
                 throw new FarmConfigException("farm " + farm.id() + ": duplicate storage position: " + storage.position());
             }
         }
+        if (farm.afkSpot() != null) {
+            if (farm.afkSpot().position() == null) {
+                throw new FarmConfigException("farm " + farm.id() + ": afkSpot missing position");
+            }
+            if (farm.afkSpot().radius() <= 0) {
+                throw new FarmConfigException("farm " + farm.id() + ": afkSpot radius must be positive");
+            }
+        }
     }
 }
