@@ -16,16 +16,16 @@ import java.util.stream.Collectors;
  * live world state.
  */
 public final class FarmSampler {
-    private final List<FarmConfig> farms;
+    private final java.util.function.Supplier<List<FarmConfig>> farmsSupplier;
     private final FarmDataProvider farmData;
     private final HistoryStore historyStore;
     private final IntSupplier sampleIntervalMinutes;
     private final IntSupplier retentionDays;
     private long ticksSinceLastSample = 0;
 
-    public FarmSampler(List<FarmConfig> farms, FarmDataProvider farmData, HistoryStore historyStore,
+    public FarmSampler(java.util.function.Supplier<List<FarmConfig>> farmsSupplier, FarmDataProvider farmData, HistoryStore historyStore,
                         IntSupplier sampleIntervalMinutes, IntSupplier retentionDays) {
-        this.farms = farms;
+        this.farmsSupplier = farmsSupplier;
         this.farmData = farmData;
         this.historyStore = historyStore;
         this.sampleIntervalMinutes = sampleIntervalMinutes;
@@ -43,7 +43,7 @@ public final class FarmSampler {
 
     private void sampleAndPrune() {
         long now = System.currentTimeMillis();
-        for (FarmConfig farm : farms) {
+        for (FarmConfig farm : farmsSupplier.get()) {
             Map<String, Integer> entityCounts = farmData.entities(farm).stream()
                     .collect(Collectors.groupingBy(EntityInfo::type, Collectors.summingInt(e -> 1)));
             Map<String, Integer> storageCounts = farmData.storage(farm).stream()

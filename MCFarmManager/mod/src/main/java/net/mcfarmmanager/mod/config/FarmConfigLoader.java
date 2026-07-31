@@ -37,14 +37,31 @@ public final class FarmConfigLoader {
             throw new FarmConfigException("malformed farms.json: missing \"farms\" array");
         }
 
-        Set<String> seenIds = new HashSet<>();
-        for (FarmConfig farm : parsed.farms()) {
-            validate(farm, seenIds);
-        }
+        validateAll(parsed.farms());
         return parsed.farms();
     }
 
-    private static void validate(FarmConfig farm, Set<String> seenIds) {
+    public static void validateAll(List<FarmConfig> farms) {
+        Set<String> seenIds = new HashSet<>();
+        for (FarmConfig farm : farms) {
+            validate(farm, seenIds);
+        }
+    }
+
+    public static void write(Path jsonFile, List<FarmConfig> farms) {
+        validateAll(farms);
+        String json = new com.google.gson.GsonBuilder().setPrettyPrinting().create()
+                .toJson(new FarmsFile(farms));
+        try {
+            Path tmp = jsonFile.resolveSibling(jsonFile.getFileName() + ".tmp");
+            Files.writeString(tmp, json);
+            Files.move(tmp, jsonFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            throw new FarmConfigException("could not write farms.json: " + e.getMessage());
+        }
+    }
+
+    public static void validate(FarmConfig farm, Set<String> seenIds) {
         if (farm.id() == null || farm.id().isEmpty()) {
             throw new FarmConfigException("farm id must be non-empty");
         }

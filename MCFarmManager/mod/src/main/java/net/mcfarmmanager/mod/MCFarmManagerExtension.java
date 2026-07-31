@@ -131,7 +131,7 @@ public final class MCFarmManagerExtension implements CarpetExtension {
             return;
         }
 
-        activeSampler = new FarmSampler(MCFarmManagerMod.farms(), farmData, historyStore,
+        activeSampler = new FarmSampler(MCFarmManagerMod::farms, farmData, historyStore,
                 () -> Settings.mcfarmmanagerSampleIntervalMinutes, () -> Settings.mcfarmmanagerHistoryRetentionDays);
         if (TICK_LISTENER_REGISTERED.compareAndSet(false, true)) {
             ServerTickEvents.END_SERVER_TICK.register(s -> {
@@ -143,7 +143,7 @@ public final class MCFarmManagerExtension implements CarpetExtension {
         }
 
         httpServer = new MCFarmManagerHttpServer(
-                MCFarmManagerMod.farms(),
+                MCFarmManagerMod::farms,
                 farmData,
                 new RealServerDataProvider(() -> CarpetServer.minecraft_server),
                 historyStore,

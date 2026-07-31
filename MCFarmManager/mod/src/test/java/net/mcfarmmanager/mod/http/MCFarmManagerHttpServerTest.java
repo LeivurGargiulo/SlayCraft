@@ -32,7 +32,7 @@ class MCFarmManagerHttpServerTest {
     @BeforeEach
     void start() throws IOException {
         historyStore = new FakeHistoryStore();
-        server = new MCFarmManagerHttpServer(farms(), new FakeFarmDataProvider(), new FakeServerDataProvider(),
+        server = new MCFarmManagerHttpServer(this::farms, new FakeFarmDataProvider(), new FakeServerDataProvider(),
                 historyStore, 0, "127.0.0.1");
         server.start();
         port = server.boundPort();

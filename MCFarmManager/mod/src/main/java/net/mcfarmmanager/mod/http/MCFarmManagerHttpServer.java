@@ -33,7 +33,7 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 
 public final class MCFarmManagerHttpServer {
-    private final List<FarmConfig> farms;
+    private final java.util.function.Supplier<List<FarmConfig>> farmsSupplier;
     private final FarmDataProvider farmData;
     private final ServerDataProvider serverData;
     private final HistoryStore historyStore;
@@ -42,10 +42,10 @@ public final class MCFarmManagerHttpServer {
     private final Gson gson = new GsonBuilder().serializeNulls().create();
     private HttpServer httpServer;
 
-    public MCFarmManagerHttpServer(List<FarmConfig> farms, FarmDataProvider farmData,
+    public MCFarmManagerHttpServer(java.util.function.Supplier<List<FarmConfig>> farmsSupplier, FarmDataProvider farmData,
                                     ServerDataProvider serverData, HistoryStore historyStore,
                                     int port, String bindAddress) {
-        this.farms = farms;
+        this.farmsSupplier = farmsSupplier;
         this.farmData = farmData;
         this.serverData = serverData;
         this.historyStore = historyStore;
@@ -60,7 +60,7 @@ public final class MCFarmManagerHttpServer {
         addContext("/players", exchange -> respondJson(exchange, Map.of("players", serverData.players())), hostFilter);
         addContext("/world", exchange -> respondJson(exchange, Map.of("dimensions", serverData.worldState())), hostFilter);
         addContext("/performance", exchange -> respondJson(exchange, serverData.performance()), hostFilter);
-        addContext("/status", exchange -> respondJson(exchange, serverData.status(farms.size())), hostFilter);
+        addContext("/status", exchange -> respondJson(exchange, serverData.status(farmsSupplier.get().size())), hostFilter);
         httpServer.setExecutor(Executors.newCachedThreadPool());
         httpServer.start();
     }
@@ -155,8 +155,14 @@ public final class MCFarmManagerHttpServer {
 
     private void handleFarms(HttpExchange exchange) throws IOException {
         String path = exchange.getRequestURI().getPath();
+        String method = exchange.getRequestMethod();
+
         if (path.equals("/farms")) {
-            respondJson(exchange, Map.of("farms", farms.stream().map(this::summarize).toList()));
+            if (method.equals("POST")) {
+                handleCreateFarm(exchange);
+                return;
+            }
+            respondJson(exchange, Map.of("farms", farmsSupplier.get().stream().map(this::summarize).toList()));
             return;
         }
 
@@ -166,12 +172,99 @@ public final class MCFarmManagerHttpServer {
             return;
         }
 
+        if (method.equals("PUT")) {
+            handleReplaceFarm(exchange, remainder);
+            return;
+        }
+        if (method.equals("DELETE")) {
+            handleDeleteFarm(exchange, remainder);
+            return;
+        }
+
         FarmConfig farm = findFarm(remainder);
         if (farm == null) {
             respondJson(exchange, 404, Map.of("error", "unknown farm: " + remainder));
             return;
         }
         respondJson(exchange, detail(farm));
+    }
+
+    private void handleCreateFarm(HttpExchange exchange) throws IOException {
+        if (!isAuthorizedWrite(exchange)) {
+            respondJson(exchange, 403, Map.of("error", "missing or invalid X-API-Token"));
+            return;
+        }
+        FarmConfig candidate;
+        try {
+            candidate = gson.fromJson(new java.io.InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8), FarmConfig.class);
+        } catch (com.google.gson.JsonSyntaxException e) {
+            respondJson(exchange, 400, Map.of("error", "malformed JSON body"));
+            return;
+        }
+        List<FarmConfig> current = farmsSupplier.get();
+        List<FarmConfig> updated = new java.util.ArrayList<>(current);
+        updated.add(candidate);
+        try {
+            net.mcfarmmanager.mod.config.FarmConfigLoader.write(net.mcfarmmanager.mod.MCFarmManagerMod.configPath(), updated);
+        } catch (net.mcfarmmanager.mod.config.FarmConfigException e) {
+            respondJson(exchange, 400, Map.of("error", e.getMessage()));
+            return;
+        }
+        net.mcfarmmanager.mod.MCFarmManagerMod.setFarms(updated);
+        respondJson(exchange, 201, summarize(candidate));
+    }
+
+    private void handleReplaceFarm(HttpExchange exchange, String id) throws IOException {
+        if (!isAuthorizedWrite(exchange)) {
+            respondJson(exchange, 403, Map.of("error", "missing or invalid X-API-Token"));
+            return;
+        }
+        FarmConfig candidate;
+        try {
+            candidate = gson.fromJson(new java.io.InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8), FarmConfig.class);
+        } catch (com.google.gson.JsonSyntaxException e) {
+            respondJson(exchange, 400, Map.of("error", "malformed JSON body"));
+            return;
+        }
+        if (candidate.id() == null || !candidate.id().equals(id)) {
+            respondJson(exchange, 400, Map.of("error", "body id must match URL id"));
+            return;
+        }
+        List<FarmConfig> current = farmsSupplier.get();
+        if (current.stream().noneMatch(f -> f.id().equals(id))) {
+            respondJson(exchange, 404, Map.of("error", "unknown farm: " + id));
+            return;
+        }
+        List<FarmConfig> updated = current.stream().map(f -> f.id().equals(id) ? candidate : f).toList();
+        try {
+            net.mcfarmmanager.mod.config.FarmConfigLoader.write(net.mcfarmmanager.mod.MCFarmManagerMod.configPath(), updated);
+        } catch (net.mcfarmmanager.mod.config.FarmConfigException e) {
+            respondJson(exchange, 400, Map.of("error", e.getMessage()));
+            return;
+        }
+        net.mcfarmmanager.mod.MCFarmManagerMod.setFarms(updated);
+        respondJson(exchange, summarize(candidate));
+    }
+
+    private void handleDeleteFarm(HttpExchange exchange, String id) throws IOException {
+        if (!isAuthorizedWrite(exchange)) {
+            respondJson(exchange, 403, Map.of("error", "missing or invalid X-API-Token"));
+            return;
+        }
+        List<FarmConfig> current = farmsSupplier.get();
+        if (current.stream().noneMatch(f -> f.id().equals(id))) {
+            respondJson(exchange, 404, Map.of("error", "unknown farm: " + id));
+            return;
+        }
+        List<FarmConfig> updated = current.stream().filter(f -> !f.id().equals(id)).toList();
+        try {
+            net.mcfarmmanager.mod.config.FarmConfigLoader.write(net.mcfarmmanager.mod.MCFarmManagerMod.configPath(), updated);
+        } catch (net.mcfarmmanager.mod.config.FarmConfigException e) {
+            respondJson(exchange, 400, Map.of("error", e.getMessage()));
+            return;
+        }
+        net.mcfarmmanager.mod.MCFarmManagerMod.setFarms(updated);
+        exchange.sendResponseHeaders(204, -1);
     }
 
     private void handleFarmHistory(HttpExchange exchange, String id) throws IOException {
@@ -188,7 +281,7 @@ public final class MCFarmManagerHttpServer {
     }
 
     private FarmConfig findFarm(String id) {
-        return farms.stream().filter(f -> f.id().equals(id)).findFirst().orElse(null);
+        return farmsSupplier.get().stream().filter(f -> f.id().equals(id)).findFirst().orElse(null);
     }
 
     private static HistorySampleView toView(HistorySample sample) {
