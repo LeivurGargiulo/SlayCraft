@@ -14,7 +14,7 @@ import { registerProjectRoutes } from './routes/projects.js';
 import { registerGalleryRoutes } from './routes/gallery.js';
 
 export function buildApp(db: Database.Database, uploadsDir: string) {
-  const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
+  const app = Fastify({ logger: process.env.NODE_ENV !== 'test', trustProxy: true });
   const cookieSecret = process.env.COOKIE_SECRET ?? 'dev-secret-change-me';
   if (process.env.NODE_ENV === 'production' && !process.env.COOKIE_SECRET) {
     throw new Error('COOKIE_SECRET must be set in production');

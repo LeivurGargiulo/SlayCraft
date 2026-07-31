@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { hashPassword, verifyPassword } from '../src/auth.js';
+import { hashPassword, verifyPassword, resetLoginAttemptsForTests } from '../src/auth.js';
 import { makeApp, loginAndGetCookie } from './helpers.js';
 
 test('hashPassword/verifyPassword roundtrip', () => {
@@ -34,4 +34,16 @@ test('wrong password is rejected', async () => {
   db.prepare('INSERT INTO users (id, password_hash) VALUES (1, ?)').run(hashPassword('right'));
   const res = await app.inject({ method: 'POST', url: '/api/login', payload: { password: 'wrong' } });
   assert.equal(res.statusCode, 401);
+});
+
+test('repeated wrong passwords lock out further attempts, even with the right password', async () => {
+  resetLoginAttemptsForTests();
+  const { app, db } = makeApp();
+  db.prepare('INSERT INTO users (id, password_hash) VALUES (1, ?)').run(hashPassword('right'));
+  for (let i = 0; i < 5; i++) {
+    const res = await app.inject({ method: 'POST', url: '/api/login', payload: { password: 'wrong' } });
+    assert.equal(res.statusCode, 401);
+  }
+  const locked = await app.inject({ method: 'POST', url: '/api/login', payload: { password: 'right' } });
+  assert.equal(locked.statusCode, 429);
 });
