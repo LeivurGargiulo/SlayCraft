@@ -10,9 +10,18 @@ test('openDb applies schema and enables WAL + foreign keys', () => {
   // :memory: databases report 'memory' journal mode regardless of the pragma set — assert it was accepted without error instead
   assert.ok(typeof journalMode === 'string');
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((r: any) => r.name);
-  for (const t of ['users', 'players', 'projects', 'tasks', 'subtasks', 'task_assignees', 'project_images', 'gallery_images', 'farm_metadata']) {
+  for (const t of ['users', 'players', 'projects', 'tasks', 'subtasks', 'task_assignees', 'project_images', 'gallery_images', 'farm_metadata', 'farm_images']) {
     assert.ok(tables.includes(t), `missing table ${t}`);
   }
+});
+
+test('projects table has a nullable coordinates column', () => {
+  const db = openDb(':memory:');
+  const columns = db.prepare('PRAGMA table_info(projects)').all().map((c: any) => c.name);
+  assert.ok(columns.includes('coordinates'), 'projects table missing coordinates column');
+  db.prepare("INSERT INTO projects (name) VALUES ('sin coordenadas')").run();
+  const row = db.prepare("SELECT coordinates FROM projects WHERE name = 'sin coordenadas'").get() as any;
+  assert.equal(row.coordinates, null);
 });
 
 test('rejects an invalid task status via CHECK constraint', () => {

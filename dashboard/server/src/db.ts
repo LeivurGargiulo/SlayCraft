@@ -11,5 +11,9 @@ export function openDb(dbPath: string): Database.Database {
   db.pragma('foreign_keys = ON');
   const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf-8');
   db.exec(schema);
+  const projectColumns = db.prepare('PRAGMA table_info(projects)').all() as Array<{ name: string }>;
+  if (!projectColumns.some((c) => c.name === 'coordinates')) {
+    db.exec('ALTER TABLE projects ADD COLUMN coordinates TEXT');
+  }
   return db;
 }

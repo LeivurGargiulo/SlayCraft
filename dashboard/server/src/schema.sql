@@ -65,3 +65,11 @@ CREATE TABLE IF NOT EXISTS farm_metadata (
   notes TEXT,
   tags TEXT
 );
+
+CREATE TABLE IF NOT EXISTS farm_images (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  farm_id TEXT NOT NULL,
+  path TEXT NOT NULL,
+  caption TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
