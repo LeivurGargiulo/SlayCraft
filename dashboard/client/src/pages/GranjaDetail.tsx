@@ -15,6 +15,7 @@ export default function GranjaDetail() {
   const [tags, setTags] = useState('');
   const [coordinates, setCoordinates] = useState('');
   const [editingMeta, setEditingMeta] = useState(false);
+  const [expectedRates, setExpectedRates] = useState<Array<{ itemId: string; rate: string }>>([]);
 
   if (farm.isLoading) return <p className="text-slate-400">Cargando…</p>;
   if (farm.isError || !farm.data) return <p className="text-status-blocked">No se encontró la granja.</p>;
@@ -24,15 +25,20 @@ export default function GranjaDetail() {
     setNotes(f.metadata.notes ?? '');
     setTags(f.metadata.tags.join(', '));
     setCoordinates(f.metadata.coordinates ?? '');
+    setExpectedRates(Object.entries(f.metadata.expected_rates).map(([itemId, rate]) => ({ itemId, rate: String(rate) })));
     setEditingMeta(true);
   }
 
   async function saveMeta() {
+    const expected_rates = Object.fromEntries(
+      expectedRates.filter((r) => r.itemId.trim() && r.rate.trim()).map((r) => [r.itemId.trim(), Number(r.rate)])
+    );
     await updateMetadata.mutateAsync({
       id: f.id,
       notes: notes || null,
       tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
       coordinates: coordinates || null,
+      expected_rates,
     });
     setEditingMeta(false);
   }
@@ -68,6 +74,47 @@ export default function GranjaDetail() {
                 placeholder="Coordenadas (ej. 120, 80, -500)"
                 className="w-full rounded border border-border bg-base px-2 py-1"
               />
+              <div className="space-y-1">
+                <div className="text-xs text-slate-400">Tasas esperadas (ítem por hora)</div>
+                {expectedRates.map((row, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input
+                      value={row.itemId}
+                      onChange={(e) => {
+                        const next = [...expectedRates];
+                        next[i] = { ...next[i], itemId: e.target.value };
+                        setExpectedRates(next);
+                      }}
+                      placeholder="ej. iron_ingot"
+                      className="flex-1 rounded border border-border bg-base px-2 py-1 text-sm"
+                    />
+                    <input
+                      value={row.rate}
+                      onChange={(e) => {
+                        const next = [...expectedRates];
+                        next[i] = { ...next[i], rate: e.target.value };
+                        setExpectedRates(next);
+                      }}
+                      type="number"
+                      placeholder="por hora"
+                      className="w-24 rounded border border-border bg-base px-2 py-1 text-sm"
+                    />
+                    <button
+                      onClick={() => setExpectedRates(expectedRates.filter((_, j) => j !== i))}
+                      className="text-sm text-status-blocked"
+                      aria-label="Eliminar fila"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setExpectedRates([...expectedRates, { itemId: '', rate: '' }])}
+                  className="text-sm text-cyan hover:underline"
+                >
+                  + Agregar ítem
+                </button>
+              </div>
               <button onClick={saveMeta} className="rounded bg-gold px-3 py-1 text-sm text-base">
                 Guardar
               </button>
