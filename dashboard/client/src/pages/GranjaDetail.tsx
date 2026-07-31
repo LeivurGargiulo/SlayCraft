@@ -53,6 +53,9 @@ export default function GranjaDetail() {
               <button onClick={saveMeta} className="rounded bg-gold px-3 py-1 text-sm text-base">
                 Guardar
               </button>
+              {updateMetadata.isError && (
+                <p className="text-sm text-status-blocked">{updateMetadata.error.message}</p>
+              )}
             </div>
           ) : (
             <div>

@@ -33,6 +33,7 @@ export default function Galeria() {
           Subir imagen
         </button>
       </div>
+      {upload.isError && <p className="text-sm text-status-blocked">{upload.error.message}</p>}
 
       <div className="grid grid-cols-4 gap-3">
         {(gallery.data?.images ?? []).map((img) => (
@@ -45,7 +46,12 @@ export default function Galeria() {
                 placeholder="Sin descripción"
                 className="w-full rounded border border-border bg-base px-2 py-1 text-xs"
               />
-              <button onClick={() => deleteImage.mutate(img.id)} className="mt-1 text-xs text-status-blocked hover:underline">
+              <button
+                onClick={() => {
+                  if (confirm('¿Eliminar esta imagen?')) deleteImage.mutate(img.id);
+                }}
+                className="mt-1 text-xs text-status-blocked hover:underline"
+              >
                 Eliminar
               </button>
             </div>

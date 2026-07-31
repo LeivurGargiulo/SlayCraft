@@ -59,6 +59,9 @@ export default function Proyectos() {
           <button onClick={onCreate} className="w-full rounded bg-gold px-3 py-2 font-medium text-base hover:opacity-90">
             Crear
           </button>
+          {createProject.isError && (
+            <p className="text-sm text-status-blocked">{createProject.error.message}</p>
+          )}
         </div>
       </Modal>
     </div>

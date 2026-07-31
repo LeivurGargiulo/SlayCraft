@@ -115,7 +115,12 @@ export default function Tareas() {
                 <button onClick={() => openEdit(t)} className="text-sm text-cyan hover:underline">
                   Editar
                 </button>
-                <button onClick={() => deleteTask.mutate(t.id)} className="text-sm text-status-blocked hover:underline">
+                <button
+                  onClick={() => {
+                    if (confirm('¿Eliminar esta tarea?')) deleteTask.mutate(t.id);
+                  }}
+                  className="text-sm text-status-blocked hover:underline"
+                >
                   Eliminar
                 </button>
               </div>
@@ -211,6 +216,11 @@ export default function Tareas() {
           <button onClick={onSave} className="w-full rounded bg-gold px-3 py-2 font-medium text-base hover:opacity-90">
             Guardar
           </button>
+          {(createTask.isError || updateTask.isError) && (
+            <p className="text-sm text-status-blocked">
+              {(createTask.error ?? updateTask.error)?.message}
+            </p>
+          )}
         </div>
       </Modal>
     </div>

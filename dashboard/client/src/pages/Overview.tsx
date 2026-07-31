@@ -37,7 +37,11 @@ export default function Overview() {
         </Card>
         <Card>
           <div className="text-sm text-slate-400">Granjas saludables</div>
-          <div className="font-mono text-3xl text-status-done">{healthyFarmCount}</div>
+          {farms.isError ? (
+            <div className="font-mono text-3xl text-status-blocked">—</div>
+          ) : (
+            <div className="font-mono text-3xl text-status-done">{healthyFarmCount}</div>
+          )}
         </Card>
       </div>
 
@@ -62,7 +66,9 @@ export default function Overview() {
 
       <section>
         <h2 className="mb-2 font-mono text-lg text-slate-200">Granjas que requieren revisión</h2>
-        {flaggedFarms.length === 0 ? (
+        {farms.isError ? (
+          <p className="text-sm text-status-blocked">No se pudo conectar con MCFarmManager.</p>
+        ) : flaggedFarms.length === 0 ? (
           <p className="text-sm text-slate-500">Todas las granjas están al día.</p>
         ) : (
           <div className="space-y-2">

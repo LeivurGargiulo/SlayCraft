@@ -43,6 +43,9 @@ export default function Jugadores() {
             Agregar
           </button>
         </div>
+        {createPlayer.isError && (
+          <p className="mt-2 text-sm text-status-blocked">{createPlayer.error.message}</p>
+        )}
       </Card>
 
       <div className="space-y-2">
@@ -60,7 +63,12 @@ export default function Jugadores() {
                 className="mt-1 rounded border border-border bg-base px-2 py-1 text-sm"
               />
             </div>
-            <button onClick={() => deletePlayer.mutate(p.id)} className="text-sm text-status-blocked hover:underline">
+            <button
+              onClick={() => {
+                if (confirm('¿Eliminar este jugador?')) deletePlayer.mutate(p.id);
+              }}
+              className="text-sm text-status-blocked hover:underline"
+            >
               Eliminar
             </button>
           </Card>

@@ -5,6 +5,8 @@ import type { FastifyInstance } from 'fastify';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
 
+const ALLOWED_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
+
 const projectInput = z.object({
   name: z.string().min(1),
   description: z.string().nullable().optional(),
@@ -73,7 +75,8 @@ export function registerProjectRoutes(app: FastifyInstance, db: Database.Databas
     const projectId = Number((req.params as { id: string }).id);
     const file = await req.file();
     if (!file) return reply.code(400).send({ error: 'Falta el archivo' });
-    const ext = path.extname(file.filename);
+    const ext = path.extname(file.filename).toLowerCase();
+    if (!ALLOWED_EXT.has(ext)) return reply.code(400).send({ error: 'Formato de imagen no permitido' });
     const filename = `${crypto.randomUUID()}${ext}`;
     await fs.promises.writeFile(path.join(uploadsDir, filename), await file.toBuffer());
     const caption = (file.fields.caption as { value?: string } | undefined)?.value ?? null;

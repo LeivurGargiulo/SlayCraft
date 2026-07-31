@@ -13,9 +13,14 @@ export default function ProyectoDetail() {
   const [editing, setEditing] = useState(false);
 
   const project = projects.data?.projects.find((p) => p.id === Number(id));
-  const [description, setDescription] = useState(project?.description ?? '');
+  const [description, setDescription] = useState('');
 
   if (!project) return <p className="text-slate-400">Cargando…</p>;
+
+  function startEdit() {
+    setDescription(project!.description ?? '');
+    setEditing(true);
+  }
 
   async function onFileChange() {
     const file = fileInput.current?.files?.[0];
@@ -31,7 +36,9 @@ export default function ProyectoDetail() {
       <div className="flex items-center justify-between">
         <h1 className="font-mono text-2xl text-gold">{project.name}</h1>
         <button
-          onClick={() => deleteProject.mutate(project.id)}
+          onClick={() => {
+            if (confirm('¿Eliminar este proyecto? Se borrarán todas sus imágenes.')) deleteProject.mutate(project.id);
+          }}
           className="text-sm text-status-blocked hover:underline"
         >
           Eliminar proyecto
@@ -51,11 +58,14 @@ export default function ProyectoDetail() {
             >
               Guardar
             </button>
+            {updateProject.isError && (
+              <p className="text-sm text-status-blocked">{updateProject.error.message}</p>
+            )}
           </div>
         ) : (
           <div>
             <p className="text-sm text-slate-300">{project.description || 'Sin descripción todavía.'}</p>
-            <button onClick={() => setEditing(true)} className="mt-2 text-sm text-cyan hover:underline">
+            <button onClick={startEdit} className="mt-2 text-sm text-cyan hover:underline">
               Editar descripción
             </button>
           </div>
@@ -70,6 +80,9 @@ export default function ProyectoDetail() {
           ))}
         </div>
         <input ref={fileInput} type="file" accept="image/*" onChange={onFileChange} className="mt-3 text-sm" />
+        {uploadImage.isError && (
+          <p className="mt-2 text-sm text-status-blocked">{uploadImage.error.message}</p>
+        )}
       </Card>
     </div>
   );

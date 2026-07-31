@@ -5,6 +5,8 @@ import type { FastifyInstance } from 'fastify';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
 
+const ALLOWED_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
+
 export function registerGalleryRoutes(app: FastifyInstance, db: Database.Database, uploadsDir: string) {
   app.get('/api/gallery', async () => ({
     images: db.prepare('SELECT * FROM gallery_images ORDER BY created_at DESC').all(),
@@ -13,7 +15,8 @@ export function registerGalleryRoutes(app: FastifyInstance, db: Database.Databas
   app.post('/api/gallery', async (req, reply) => {
     const file = await req.file();
     if (!file) return reply.code(400).send({ error: 'Falta el archivo' });
-    const ext = path.extname(file.filename);
+    const ext = path.extname(file.filename).toLowerCase();
+    if (!ALLOWED_EXT.has(ext)) return reply.code(400).send({ error: 'Formato de imagen no permitido' });
     const filename = `${crypto.randomUUID()}${ext}`;
     await fs.promises.writeFile(path.join(uploadsDir, filename), await file.toBuffer());
     const caption = (file.fields.caption as { value?: string } | undefined)?.value ?? null;

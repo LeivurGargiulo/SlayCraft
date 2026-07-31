@@ -3,6 +3,7 @@ import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import type Database from 'better-sqlite3';
+import { ZodError } from 'zod';
 import { isValidSession } from './auth.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerFarmRoutes } from './routes/farms.js';
@@ -17,8 +18,19 @@ export function buildApp(db: Database.Database, uploadsDir: string) {
   const cookieSecret = process.env.COOKIE_SECRET ?? 'dev-secret-change-me';
 
   app.register(cookie, { secret: cookieSecret });
-  app.register(multipart);
+  app.register(multipart, { limits: { fileSize: 15 * 1024 * 1024 } });
   app.register(fastifyStatic, { root: uploadsDir, prefix: '/uploads/' });
+
+  app.setErrorHandler((err, _req, reply) => {
+    if (err instanceof ZodError) return reply.code(400).send({ error: 'Datos inválidos' });
+    const code = (err as { code?: string }).code ?? '';
+    if (code.startsWith('SQLITE_CONSTRAINT'))
+      return reply.code(409).send({ error: 'Ese registro ya existe o hace referencia a algo que no existe' });
+    if (code === 'FST_REQ_FILE_TOO_LARGE')
+      return reply.code(413).send({ error: 'La imagen es demasiado grande' });
+    app.log.error(err);
+    reply.code(500).send({ error: 'Error del servidor' });
+  });
 
   app.addHook('preHandler', async (req, reply) => {
     if (!req.url.startsWith('/api/') || req.url === '/api/login') return;

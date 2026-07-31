@@ -53,5 +53,5 @@ test('invalid status is rejected with 400', async () => {
     headers: { cookie },
     payload: { title: 'x', status: 'nope' },
   });
-  assert.equal(res.statusCode, 500); // zod throws, Fastify default error handler -> 500; acceptable for v1, not exposed as a UX path since the frontend only ever sends valid enum values
+  assert.equal(res.statusCode, 400); // zod throws, app-level error handler maps ZodError -> 400 with a Spanish message
 });
