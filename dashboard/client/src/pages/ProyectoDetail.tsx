@@ -86,7 +86,7 @@ export default function ProyectoDetail() {
 
       <Card>
         <h2 className="mb-2 font-mono text-slate-200">Imágenes</h2>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {project.images.map((img, i) => (
             <div key={img.id} className="relative">
               <ImageZoom

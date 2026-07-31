@@ -37,7 +37,7 @@ export default function Galeria() {
       </div>
       {upload.isError && <p className="text-sm text-status-blocked">{upload.error.message}</p>}
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {(gallery.data?.images ?? []).map((img, i) => (
           <div key={img.id} className="overflow-hidden rounded-lg border border-border bg-panel">
             <ImageZoom

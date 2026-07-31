@@ -24,7 +24,7 @@ export default function Checkbox({
           }`}
         />
       </button>
-      {label}
+      <span className="min-w-0 break-words">{label}</span>
     </label>
   );
 }

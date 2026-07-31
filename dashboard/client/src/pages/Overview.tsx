@@ -32,7 +32,7 @@ export default function Overview() {
       <h1 className="font-mono text-2xl text-gold">Resumen</h1>
 
       <motion.div
-        className="grid grid-cols-3 gap-4"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
         variants={staggerContainer}
         initial="hidden"
         animate="show"

@@ -9,9 +9,9 @@ export default function Layout() {
   const blobOffsetB = useParallax(0.15);
 
   return (
-    <div className="flex">
+    <div className="flex flex-col sm:flex-row">
       <Sidebar />
-      <main className="relative min-h-screen flex-1 overflow-hidden bg-base p-6">
+      <main className="relative min-h-screen flex-1 overflow-hidden bg-base p-4 sm:p-6">
         <div
           className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-gold/10 blur-3xl"
           style={{ transform: `translateY(${blobOffsetA}px)` }}
