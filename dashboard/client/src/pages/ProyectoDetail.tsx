@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useProjects, useUpdateProject, useDeleteProject, useUploadProjectImage, useDeleteProjectImage } from '../api/hooks';
 import Card from '../components/Card';
 import ImageZoom from '../components/ImageZoom';
+import FileUploadButton from '../components/FileUploadButton';
 
 export default function ProyectoDetail() {
   const { id } = useParams<{ id: string }>();
@@ -105,7 +106,7 @@ export default function ProyectoDetail() {
             </div>
           ))}
         </div>
-        <input ref={fileInput} type="file" accept="image/*" onChange={onFileChange} className="mt-3 text-sm" />
+        <FileUploadButton ref={fileInput} onChange={onFileChange} className="mt-3" />
         {uploadImage.isError && (
           <p className="mt-2 text-sm text-status-blocked">{uploadImage.error.message}</p>
         )}

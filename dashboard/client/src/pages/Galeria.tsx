@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useGallery, useUploadGalleryImage, useUpdateGalleryImage, useDeleteGalleryImage } from '../api/hooks';
 import ImageZoom from '../components/ImageZoom';
+import FileUploadButton from '../components/FileUploadButton';
 
 export default function Galeria() {
   const gallery = useGallery();
@@ -23,7 +24,7 @@ export default function Galeria() {
       <h1 className="font-mono text-2xl text-gold">Galería</h1>
 
       <div className="flex items-center gap-2 rounded-lg border border-border bg-panel p-4">
-        <input ref={fileInput} type="file" accept="image/*" className="text-sm" />
+        <FileUploadButton ref={fileInput} />
         <input
           value={captionDraft}
           onChange={(e) => setCaptionDraft(e.target.value)}

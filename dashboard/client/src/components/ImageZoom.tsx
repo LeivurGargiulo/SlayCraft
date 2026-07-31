@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { zoomIn } from '../lib/motion';
 
@@ -47,55 +48,58 @@ export default function ImageZoom({
         className={`${className ?? ''} cursor-zoom-in`}
         onClick={() => setOpen(true)}
       />
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-            onClick={() => setOpen(false)}
-          >
-            {images.length > 1 && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPos((p) => (p - 1 + images.length) % images.length);
-                }}
-                aria-label="Anterior"
-                className="absolute left-4 text-3xl text-slate-300 hover:text-gold"
-              >
-                ‹
-              </button>
-            )}
-            <motion.img
-              key={pos}
-              variants={zoomIn}
-              initial="hidden"
-              animate="show"
-              exit="hidden"
-              transition={{ duration: 0.15 }}
-              src={current.src}
-              alt={current.alt}
-              className="max-h-full max-w-full cursor-zoom-out rounded object-contain"
-            />
-            {images.length > 1 && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPos((p) => (p + 1) % images.length);
-                }}
-                aria-label="Siguiente"
-                className="absolute right-4 text-3xl text-slate-300 hover:text-gold"
-              >
-                ›
-              </button>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+              onClick={() => setOpen(false)}
+            >
+              {images.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPos((p) => (p - 1 + images.length) % images.length);
+                  }}
+                  aria-label="Anterior"
+                  className="absolute left-4 text-3xl text-slate-300 hover:text-gold"
+                >
+                  ‹
+                </button>
+              )}
+              <motion.img
+                key={pos}
+                variants={zoomIn}
+                initial="hidden"
+                animate="show"
+                exit="hidden"
+                transition={{ duration: 0.15 }}
+                src={current.src}
+                alt={current.alt}
+                className="max-h-full max-w-full cursor-zoom-out rounded object-contain"
+              />
+              {images.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPos((p) => (p + 1) % images.length);
+                  }}
+                  aria-label="Siguiente"
+                  className="absolute right-4 text-3xl text-slate-300 hover:text-gold"
+                >
+                  ›
+                </button>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </>
   );
 }

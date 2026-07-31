@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useFarm, useFarmHistory, useUpdateFarmMetadata, useUploadFarmImage, useDeleteFarmImage } from '../api/hooks';
 import Card from '../components/Card';
 import ImageZoom from '../components/ImageZoom';
+import FileUploadButton from '../components/FileUploadButton';
 import type { StorageItem } from '../api/types';
 
 // A filled shulker box represents its contents, not an item of its own; an empty box still counts as one shulker_box.
@@ -307,7 +308,7 @@ export default function GranjaDetail() {
             </div>
           ))}
         </div>
-        <input ref={fileInput} type="file" accept="image/*" onChange={onFileChange} className="mt-3 text-sm" />
+        <FileUploadButton ref={fileInput} onChange={onFileChange} className="mt-3" />
         {uploadImage.isError && <p className="mt-2 text-sm text-status-blocked">{uploadImage.error.message}</p>}
       </Card>
     </div>
