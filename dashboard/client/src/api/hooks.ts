@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from './client';
 import type {
   Task, TaskInput, Subtask, Player, FarmSummary, FarmDetail, FarmHistorySample,
-  LivePlayer, Performance, Project, ProjectImage, GalleryImage,
+  LivePlayer, Performance, Project, ProjectImage, GalleryImage, FarmImage,
 } from './types';
 
 // --- auth ---
@@ -137,6 +137,28 @@ export function useUpdateFarmMetadata() {
       qc.invalidateQueries({ queryKey: ['farms'] });
       qc.invalidateQueries({ queryKey: ['farms', vars.id] });
     },
+  });
+}
+export function useUploadFarmImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ farmId, file, caption }: { farmId: string; file: File; caption?: string }) => {
+      const form = new FormData();
+      form.append('file', file);
+      if (caption) form.append('caption', caption);
+      return apiFetch<FarmImage>(`/farms/${farmId}/images`, { method: 'POST', body: form });
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['farms'] });
+      qc.invalidateQueries({ queryKey: ['farms', vars.farmId] });
+    },
+  });
+}
+export function useDeleteFarmImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => apiFetch<void>(`/farm-images/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['farms'] }),
   });
 }
 export function useLivePlayers() {

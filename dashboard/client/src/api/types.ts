@@ -51,6 +51,15 @@ export interface FarmSummary {
   chunkLoaded: boolean;
   fakePlayerOnline: boolean;
   metadata: { notes: string | null; tags: string[] };
+  images: FarmImage[];
+}
+
+export interface FarmImage {
+  id: number;
+  farm_id: string;
+  path: string;
+  caption: string | null;
+  sort_order: number;
 }
 
 export interface FarmDetail extends FarmSummary {
@@ -84,6 +93,7 @@ export interface Project {
   name: string;
   description: string | null;
   status: string;
+  coordinates: string | null;
   created_at: string;
   images: ProjectImage[];
 }
