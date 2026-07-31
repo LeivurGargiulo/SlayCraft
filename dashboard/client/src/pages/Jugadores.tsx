@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { usePlayers, useCreatePlayer, useUpdatePlayer, useDeletePlayer, useLivePlayers } from '../api/hooks';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
@@ -53,7 +54,9 @@ export default function Jugadores() {
           <Card key={p.id} className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2 font-medium">
-                {p.minecraft_name}
+                <Link to={`/jugadores/${p.id}`} className="text-cyan hover:underline">
+                  {p.minecraft_name}
+                </Link>
                 <StatusBadge status={liveNames.has(p.minecraft_name) ? 'online' : 'offline'} />
               </div>
               <input
