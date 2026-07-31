@@ -4,6 +4,11 @@ const { Vec3 } = require('vec3');
 const PROGRESS_INTERVAL_MS = 10000;
 const NO_STOCK_ERROR = 'no fill block available (inventory exhausted)';
 const DEFAULT_PATHFIND_TIMEOUT_MS = 30000;
+// Same failure (bad terrain, no reachable path, permanently missing stock)
+// repeating back-to-back means the job is stuck, not making slow progress -
+// grinding through the rest one by one just burns time on guaranteed
+// failures. Give up on the job once this many actions in a row have failed.
+const MAX_CONSECUTIVE_FAILURES = 5;
 
 // Candidate neighbor offsets to find a solid block to place against, tried in order.
 const FACE_OFFSETS = [
@@ -75,8 +80,9 @@ class ExecutionEngine {
       console.log(`[executionEngine] ${line}`);
     }, PROGRESS_INTERVAL_MS);
 
-    // null = ran to completion; otherwise the status that stopped us.
+    // null = ran to completion; otherwise the status/reason that stopped us.
     let stoppedBy = null;
+    let consecutiveFailures = 0;
 
     try {
       for (const row of pending) {
@@ -94,10 +100,18 @@ class ExecutionEngine {
           break;
         }
 
+        let ok;
         if (row.action === 'break') {
-          await this._runBreak(jobId, row);
+          ok = await this._runBreak(jobId, row);
         } else if (row.action === 'place') {
-          await this._runPlace(jobId, row);
+          ok = await this._runPlace(jobId, row);
+        }
+
+        consecutiveFailures = ok ? 0 : consecutiveFailures + 1;
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          console.error(`[executionEngine] job ${jobId}: ${consecutiveFailures} actions failed in a row, giving up (stuck loop)`);
+          stoppedBy = 'stuck';
+          break;
         }
       }
     } finally {
@@ -113,20 +127,47 @@ class ExecutionEngine {
       return;
     }
 
-    const failed = this._hasFailedActions(jobId);
+    const failed = stoppedBy === 'stuck' || this._hasFailedActions(jobId);
     this.jobManager.markJobStatus(jobId, failed ? 'failed' : 'completed');
   }
 
   async _runBreak(jobId, row) {
     const pos = new Vec3(row.x, row.y, row.z);
+    console.log(`[executionEngine] job ${jobId} seq ${row.seq}: breaking ${row.block_type ?? '?'} at ${pos.x},${pos.y},${pos.z}`);
     try {
       await this._gotoWithTimeout(new goals.GoalNear(pos.x, pos.y, pos.z, 1));
       const block = this.bot.blockAt(pos);
+      await this._equipBestTool(block);
       await this.bot.dig(block);
       this.jobManager.markActionDone(jobId, row.seq);
+      console.log(`[executionEngine] job ${jobId} seq ${row.seq}: break done`);
+      return true;
     } catch (err) {
       console.error(`[executionEngine] job ${jobId} seq ${row.seq} (${row.action}) failed: ${err.message}`);
       this.jobManager.markActionFailed(jobId, row.seq, err.message);
+      return false;
+    }
+  }
+
+  // Picks whichever inventory item digs `block` fastest (falls back to bare
+  // hand) instead of digging with whatever happens to already be held - e.g.
+  // a dirt block placed by an earlier action stayed equipped and got used to
+  // dig the next block instead of the shovel sitting in inventory. Mirrors
+  // the multiplier lookup bot.digTime() itself uses (materialToolMultipliers
+  // keyed by item type), so "best" here matches what actually digs fastest.
+  async _equipBestTool(block) {
+    const multipliers = this.bot.registry.materials[block.material] ?? {};
+    let bestItem = null;
+    let bestMultiplier = 1;
+    for (const item of this.bot.inventory.items()) {
+      const multiplier = multipliers[item.type];
+      if (multiplier > bestMultiplier) {
+        bestMultiplier = multiplier;
+        bestItem = item;
+      }
+    }
+    if (bestItem) {
+      await this.bot.equip(bestItem, 'hand');
     }
   }
 
@@ -144,10 +185,11 @@ class ExecutionEngine {
     const item = this._resolveInventoryItem(row.block_type);
     if (!item) {
       this.jobManager.markActionFailed(jobId, row.seq, NO_STOCK_ERROR);
-      return;
+      return false;
     }
 
     const pos = new Vec3(row.x, row.y, row.z);
+    console.log(`[executionEngine] job ${jobId} seq ${row.seq}: placing ${item.name} (wanted ${row.block_type ?? '?'}) at ${pos.x},${pos.y},${pos.z}`);
     try {
       const reference = this._findPlacementReference(pos);
       if (!reference) {
@@ -163,9 +205,12 @@ class ExecutionEngine {
       await this.bot.equip(item, 'hand');
       await this.bot.placeBlock(reference.referenceBlock, reference.faceVector);
       this.jobManager.markActionDone(jobId, row.seq);
+      console.log(`[executionEngine] job ${jobId} seq ${row.seq}: place done`);
+      return true;
     } catch (err) {
       console.error(`[executionEngine] job ${jobId} seq ${row.seq} (${row.action}) failed: ${err.message}`);
       this.jobManager.markActionFailed(jobId, row.seq, err.message);
+      return false;
     }
   }
 

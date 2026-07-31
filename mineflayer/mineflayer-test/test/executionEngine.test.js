@@ -22,7 +22,12 @@ function createTestDb() {
  * @param {Object} blockMap
  * @param {Object} initialInventory - {itemName: count} the bot starts holding
  */
-function createFakeBot(blockMap, initialInventory = {}) {
+// Fixed item-type ids so tests can build a registry.materials table that
+// mirrors prismarine-block's real digTime() lookup (multiplier keyed by
+// held item's numeric type, not its name).
+const ITEM_TYPES = { iron_shovel: 2, dirt: 3, iron_pickaxe: 4 };
+
+function createFakeBot(blockMap, initialInventory = {}, materials = {}) {
   const key = (pos) => `${pos.x},${pos.y},${pos.z}`;
   const equipCalls = [];
   const gotoCalls = [];
@@ -41,7 +46,7 @@ function createFakeBot(blockMap, initialInventory = {}) {
       items() {
         return [...counts]
           .filter(([, count]) => count > 0)
-          .map(([name, count]) => ({ name, count, type: 1, slot: 36 }));
+          .map(([name, count]) => ({ name, count, type: ITEM_TYPES[name] ?? 1, slot: 36 }));
       },
     },
     blockAt(pos) {
@@ -84,6 +89,7 @@ function createFakeBot(blockMap, initialInventory = {}) {
     // deliberately absent - it's a tool, not a block.
     registry: {
       blocksByName: { dirt: {}, stone: {} },
+      materials,
     },
   };
   return bot;
@@ -91,11 +97,11 @@ function createFakeBot(blockMap, initialInventory = {}) {
 
 // Helper: wrap a plain {type, name} into a block with .position, matching what
 // bot.blockAt would normally return.
-function setBlock(blockMap, pos, type, name) {
+function setBlock(blockMap, pos, type, name, material) {
   // shapes: a full-cube AABB, matching prismarine-block's shape for a solid
   // block - GoalPlaceBlock's constructor (goals.js) needs this to compute
   // which faces are placeable against.
-  blockMap[`${pos.x},${pos.y},${pos.z}`] = { type, name, position: pos, shapes: [[0, 0, 0, 1, 1, 1]] };
+  blockMap[`${pos.x},${pos.y},${pos.z}`] = { type, name, material, position: pos, shapes: [[0, 0, 0, 1, 1, 1]] };
 }
 
 test('full run: even break/place balance completes the job', async () => {
@@ -203,6 +209,54 @@ test('resume after crash: stock rebuild is correct and no double-execution', asy
     bot.equipCalls.every((c) => c.item.name !== 'null'),
     'equip should never be handed an item named by the coerced string "null"'
   );
+
+  db.close();
+});
+
+test('break equips the fastest tool for the block instead of digging with whatever is already held', async () => {
+  const db = createTestDb();
+  const blockMap = {};
+  setBlock(blockMap, { x: 0, y: 65, z: 0 }, 1, 'dirt', 'dirt');
+
+  const jobId = db.enqueue('flatten', 'player1', '{}', [
+    { action: 'break', x: 0, y: 65, z: 0 },
+  ]);
+
+  // Bot is already holding a placed dirt block from an earlier action, but
+  // also carries a shovel - digTime's multiplier table (mirrored here via
+  // registry.materials) says the shovel is faster on the 'dirt' material.
+  const bot = createFakeBot(
+    blockMap,
+    { dirt: 1, iron_shovel: 1 },
+    { dirt: { [ITEM_TYPES.iron_shovel]: 2 } }
+  );
+  const engine = new ExecutionEngine(bot, db);
+  await engine.runJob(jobId);
+
+  const status = db.getStatus(jobId);
+  assert.strictEqual(status.status, 'completed');
+  assert.strictEqual(bot.equipCalls.length, 1, 'the break action must equip a tool before digging');
+  assert.strictEqual(bot.equipCalls[0].item.name, 'iron_shovel', 'must equip the shovel, never dig with the held dirt');
+
+  db.close();
+});
+
+test('break digs bare-handed when no inventory item beats the hand multiplier', async () => {
+  const db = createTestDb();
+  const blockMap = {};
+  setBlock(blockMap, { x: 0, y: 65, z: 0 }, 1, 'dirt', 'dirt');
+
+  const jobId = db.enqueue('flatten', 'player1', '{}', [
+    { action: 'break', x: 0, y: 65, z: 0 },
+  ]);
+
+  const bot = createFakeBot(blockMap, { dirt: 1 }, {});
+  const engine = new ExecutionEngine(bot, db);
+  await engine.runJob(jobId);
+
+  const status = db.getStatus(jobId);
+  assert.strictEqual(status.status, 'completed');
+  assert.strictEqual(bot.equipCalls.length, 0, 'no equip call should happen when nothing in inventory beats the hand');
 
   db.close();
 });
@@ -425,6 +479,38 @@ test('stuck pathfinding: a goto() that never resolves times out and fails the ac
   const rows = db.db.prepare('SELECT * FROM job_actions WHERE job_id = ?').all(jobId);
   assert.strictEqual(rows[0].status, 'failed');
   assert.match(rows[0].error, /timed out/i);
+
+  db.close();
+});
+
+test('stuck loop: too many consecutive action failures aborts the job early instead of grinding through the rest', async () => {
+  const db = createTestDb();
+  const blockMap = {};
+  setBlock(blockMap, { x: 0, y: 63, z: 0 }, 1, 'stone');
+
+  // 10 place actions, no stock ever provided - every single one will fail
+  // with the same stock-exhaustion error. Without a stuck-loop guard the
+  // engine burns through all 10 one by one; with it, it should give up
+  // after MAX_CONSECUTIVE_FAILURES and leave the rest untouched.
+  const actions = [];
+  for (let i = 0; i < 10; i++) {
+    actions.push({ action: 'place', x: i, y: 64, z: 0 });
+  }
+  const jobId = db.enqueue('flatten', 'player1', '{}', actions);
+
+  const bot = createFakeBot(blockMap); // empty inventory - every place fails
+  const engine = new ExecutionEngine(bot, db);
+  await engine.runJob(jobId);
+
+  const status = db.getStatus(jobId);
+  assert.strictEqual(status.status, 'failed', 'job should end failed after the stuck-loop abort');
+
+  const rows = db.db.prepare('SELECT * FROM job_actions WHERE job_id = ? ORDER BY seq').all(jobId);
+  const failedCount = rows.filter((r) => r.status === 'failed').length;
+  const pendingCount = rows.filter((r) => r.status === 'pending').length;
+
+  assert.ok(failedCount < 10, 'the engine must stop before attempting every action');
+  assert.ok(pendingCount > 0, 'actions after the abort point must be left untouched, not attempted');
 
   db.close();
 });
