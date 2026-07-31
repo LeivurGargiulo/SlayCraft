@@ -32,6 +32,15 @@ function getImages(db: Database.Database, farmId: string) {
   return db.prepare('SELECT * FROM farm_images WHERE farm_id = ? ORDER BY sort_order').all(farmId);
 }
 
+async function isProducing(id: string): Promise<boolean> {
+  const data = (await mcfmFetch(`/farms/${encodeURIComponent(id)}/history?range=1h`)) as {
+    samples: Array<{ storageCounts: Record<string, number> }>;
+  };
+  if (!Array.isArray(data.samples) || data.samples.length < 2) return false;
+  const total = (counts: Record<string, number>) => Object.values(counts).reduce((sum, n) => sum + n, 0);
+  return total(data.samples[data.samples.length - 1].storageCounts) > total(data.samples[0].storageCounts);
+}
+
 async function withMcfm<T>(reply: import('fastify').FastifyReply, fn: () => Promise<T>) {
   try {
     return await fn();
@@ -67,16 +76,24 @@ const farmConfigSchema = z.object({
 export function registerFarmRoutes(app: FastifyInstance, db: Database.Database, uploadsDir: string) {
   app.get('/api/farms', async (_req, reply) =>
     withMcfm(reply, async () => {
-      const data = (await mcfmFetch('/farms')) as { farms: Array<{ id: string }> };
-      return { farms: data.farms.map((f) => ({ ...f, metadata: getMetadata(db, f.id), images: getImages(db, f.id) })) };
+      const data = (await mcfmFetch('/farms')) as { farms: Array<{ id: string; occupantCount: number }> };
+      const farms = await Promise.all(
+        data.farms.map(async (f) => ({
+          ...f,
+          online: f.occupantCount > 0 || (await isProducing(f.id)),
+          metadata: getMetadata(db, f.id),
+          images: getImages(db, f.id),
+        }))
+      );
+      return { farms };
     })
   );
 
   app.get('/api/farms/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
     return withMcfm(reply, async () => {
-      const farm = (await mcfmFetch(`/farms/${encodeURIComponent(id)}`)) as Record<string, unknown>;
-      return { ...farm, metadata: getMetadata(db, id), images: getImages(db, id) };
+      const farm = (await mcfmFetch(`/farms/${encodeURIComponent(id)}`)) as Record<string, unknown> & { occupantCount: number };
+      return { ...farm, online: farm.occupantCount > 0 || (await isProducing(id)), metadata: getMetadata(db, id), images: getImages(db, id) };
     });
   });
 

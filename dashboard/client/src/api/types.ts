@@ -48,8 +48,10 @@ export interface FarmSummary {
   dimension: string;
   entityCount: number;
   storageItemCount: number;
+  storageCapacity: number;
   chunkLoaded: boolean;
   occupantCount: number;
+  online: boolean;
   metadata: { notes: string | null; tags: string[]; coordinates: string | null; expected_rates: Record<string, number> };
   images: FarmImage[];
 }

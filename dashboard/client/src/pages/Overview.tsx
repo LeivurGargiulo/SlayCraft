@@ -19,7 +19,7 @@ export default function Overview() {
   );
 
   const flaggedFarms = (farms.data?.farms ?? []).filter(
-    (f) => f.occupantCount === 0 || f.storageItemCount > 0.9 * 2916 // 27 slots * 108 stack size heuristic; real capacity comes per-chest, this is a coarse "likely full" signal
+    (f) => !f.online || (f.storageCapacity > 0 && f.storageItemCount > 0.9 * f.storageCapacity)
   );
   const healthyFarmCount = (farms.data?.farms.length ?? 0) - flaggedFarms.length;
 
@@ -96,7 +96,7 @@ export default function Overview() {
               <motion.div key={f.id} variants={fadeUp}>
                 <Card className="flex items-center justify-between">
                   <span>{f.name}</span>
-                  <StatusBadge status={f.occupantCount > 0 ? 'online' : 'offline'} />
+                  <StatusBadge status={f.online ? 'online' : 'offline'} />
                 </Card>
               </motion.div>
             ))}

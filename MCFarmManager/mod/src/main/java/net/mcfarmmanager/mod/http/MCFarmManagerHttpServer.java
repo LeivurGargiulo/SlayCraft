@@ -354,17 +354,20 @@ public final class MCFarmManagerHttpServer {
     }
 
     private FarmSummary summarize(FarmConfig farm) {
-        int storageItemCount = farmData.storage(farm).stream()
+        List<net.mcfarmmanager.mod.data.StorageInfo> storage = farmData.storage(farm);
+        int storageItemCount = storage.stream()
                 .flatMap(s -> s.items().stream())
                 .flatMap(net.mcfarmmanager.mod.data.ItemStackInfo::selfAndContents)
                 .mapToInt(item -> item.count())
                 .sum();
+        int storageCapacity = storage.stream().mapToInt(s -> s.capacity() * 64).sum();
         return new FarmSummary(
                 farm.id(),
                 farm.name(),
                 farm.dimension(),
                 farmData.entities(farm).size(),
                 storageItemCount,
+                storageCapacity,
                 farmData.chunkLoaded(farm),
                 farmData.occupants(farm).size());
     }

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   useFarm,
@@ -14,7 +14,24 @@ import ImageZoom from '../components/ImageZoom';
 import FileUploadButton from '../components/FileUploadButton';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
+import Checkbox from '../components/Checkbox';
+import Select from '../components/Select';
 import type { StorageItem, FarmDetail as FarmDetailType } from '../api/types';
+
+const DIMENSIONS = [
+  { value: 'minecraft:overworld', label: 'Overworld' },
+  { value: 'minecraft:the_nether', label: 'Nether' },
+  { value: 'minecraft:the_end', label: 'End' },
+];
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <div className="mb-1 text-xs text-slate-400">{label}</div>
+      {children}
+    </div>
+  );
+}
 
 type StorageRow = { id: string; label: string; x: string; y: string; z: string };
 
@@ -407,38 +424,42 @@ export default function GranjaDetail() {
       {config && (
         <Modal open={configModalOpen} onClose={() => setConfigModalOpen(false)} title="Editar configuración">
           <div className="space-y-3">
-            <input
-              value={config.name}
-              onChange={(e) => setConfig({ ...config, name: e.target.value })}
-              placeholder="Nombre"
-              className="w-full rounded border border-border bg-base px-3 py-2"
-            />
-            <input
-              value={config.dimension}
-              onChange={(e) => setConfig({ ...config, dimension: e.target.value })}
-              placeholder="Dimensión"
-              className="w-full rounded border border-border bg-base px-3 py-2"
-            />
-            <div>
-              <div className="mb-1 text-xs text-slate-400">Ancla (posición central)</div>
+            <Field label="Nombre">
+              <input
+                value={config.name}
+                onChange={(e) => setConfig({ ...config, name: e.target.value })}
+                className="w-full rounded border border-border bg-base px-3 py-2"
+              />
+            </Field>
+            <Field label="Dimensión">
+              <Select
+                value={config.dimension}
+                onChange={(dimension) => setConfig({ ...config, dimension })}
+                options={DIMENSIONS}
+                className="w-full [&>button]:py-2"
+              />
+            </Field>
+            <Field label="Ancla (posición central)">
               <div className="flex flex-wrap gap-2">
                 <input value={config.x} onChange={(e) => setConfig({ ...config, x: e.target.value })} placeholder="X" className="min-w-0 flex-1 rounded border border-border bg-base px-3 py-2" />
                 <input value={config.y} onChange={(e) => setConfig({ ...config, y: e.target.value })} placeholder="Y" className="min-w-0 flex-1 rounded border border-border bg-base px-3 py-2" />
                 <input value={config.z} onChange={(e) => setConfig({ ...config, z: e.target.value })} placeholder="Z" className="min-w-0 flex-1 rounded border border-border bg-base px-3 py-2" />
               </div>
-            </div>
-            <input
-              value={config.entityScanRadius}
-              onChange={(e) => setConfig({ ...config, entityScanRadius: e.target.value })}
-              placeholder="Radio de escaneo"
-              className="w-full rounded border border-border bg-base px-3 py-2"
-            />
-            <input
-              value={config.fakePlayerName}
-              onChange={(e) => setConfig({ ...config, fakePlayerName: e.target.value })}
-              placeholder="Nombre del jugador falso (opcional)"
-              className="w-full rounded border border-border bg-base px-3 py-2"
-            />
+            </Field>
+            <Field label="Radio de escaneo">
+              <input
+                value={config.entityScanRadius}
+                onChange={(e) => setConfig({ ...config, entityScanRadius: e.target.value })}
+                className="w-full rounded border border-border bg-base px-3 py-2"
+              />
+            </Field>
+            <Field label="Nombre del jugador falso (opcional)">
+              <input
+                value={config.fakePlayerName}
+                onChange={(e) => setConfig({ ...config, fakePlayerName: e.target.value })}
+                className="w-full rounded border border-border bg-base px-3 py-2"
+              />
+            </Field>
 
             <div className="space-y-1">
               <div className="text-xs text-slate-400">Contenedores</div>
@@ -497,22 +518,25 @@ export default function GranjaDetail() {
             </div>
 
             <div className="space-y-1">
-              <label className="flex items-center gap-2 text-sm text-slate-300">
-                <input type="checkbox" checked={config.hasAfkSpot} onChange={(e) => setConfig({ ...config, hasAfkSpot: e.target.checked })} />
-                Tiene punto de AFK
-              </label>
+              <Checkbox
+                checked={config.hasAfkSpot}
+                onChange={(checked) => setConfig({ ...config, hasAfkSpot: checked })}
+                label="Tiene punto de AFK"
+              />
               {config.hasAfkSpot && (
-                <div className="flex flex-wrap gap-2">
-                  <input value={config.afkX} onChange={(e) => setConfig({ ...config, afkX: e.target.value })} placeholder="X" className="w-16 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm" />
-                  <input value={config.afkY} onChange={(e) => setConfig({ ...config, afkY: e.target.value })} placeholder="Y" className="w-16 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm" />
-                  <input value={config.afkZ} onChange={(e) => setConfig({ ...config, afkZ: e.target.value })} placeholder="Z" className="w-16 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm" />
-                  <input
-                    value={config.afkRadius}
-                    onChange={(e) => setConfig({ ...config, afkRadius: e.target.value })}
-                    placeholder="Radio"
-                    className="w-16 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm"
-                  />
-                </div>
+                <Field label="Punto de AFK (posición y radio)">
+                  <div className="flex flex-wrap gap-2">
+                    <input value={config.afkX} onChange={(e) => setConfig({ ...config, afkX: e.target.value })} placeholder="X" className="w-16 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm" />
+                    <input value={config.afkY} onChange={(e) => setConfig({ ...config, afkY: e.target.value })} placeholder="Y" className="w-16 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm" />
+                    <input value={config.afkZ} onChange={(e) => setConfig({ ...config, afkZ: e.target.value })} placeholder="Z" className="w-16 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm" />
+                    <input
+                      value={config.afkRadius}
+                      onChange={(e) => setConfig({ ...config, afkRadius: e.target.value })}
+                      placeholder="Radio"
+                      className="w-16 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm"
+                    />
+                  </div>
+                </Field>
               )}
             </div>
 

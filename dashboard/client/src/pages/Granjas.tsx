@@ -4,6 +4,13 @@ import { useFarms, useCreateFarm } from '../api/hooks';
 import Card from '../components/Card';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
+import Select from '../components/Select';
+
+const DIMENSIONS = [
+  { value: 'minecraft:overworld', label: 'Overworld' },
+  { value: 'minecraft:the_nether', label: 'Nether' },
+  { value: 'minecraft:the_end', label: 'End' },
+];
 
 export default function Granjas() {
   const farms = useFarms();
@@ -51,7 +58,7 @@ export default function Granjas() {
             <Card className="hover:border-gold">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{f.name}</span>
-                <StatusBadge status={f.occupantCount > 0 ? 'online' : 'offline'} />
+                <StatusBadge status={f.online ? 'online' : 'offline'} />
               </div>
               <div className="mt-2 font-mono text-sm text-slate-400">
                 {f.entityCount} entidades · {f.storageItemCount} ítems almacenados
@@ -75,12 +82,7 @@ export default function Granjas() {
         <div className="space-y-3">
           <input value={id} onChange={(e) => setId(e.target.value)} placeholder="id (ej: iron_farm)" className="w-full rounded border border-border bg-base px-3 py-2" />
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" className="w-full rounded border border-border bg-base px-3 py-2" />
-          <input
-            value={dimension}
-            onChange={(e) => setDimension(e.target.value)}
-            placeholder="Dimensión (ej: minecraft:overworld)"
-            className="w-full rounded border border-border bg-base px-3 py-2"
-          />
+          <Select value={dimension} onChange={setDimension} options={DIMENSIONS} className="w-full [&>button]:py-2" />
           <div className="flex gap-2">
             <input value={x} onChange={(e) => setX(e.target.value)} placeholder="X" className="w-1/3 rounded border border-border bg-base px-3 py-2" />
             <input value={y} onChange={(e) => setY(e.target.value)} placeholder="Y" className="w-1/3 rounded border border-border bg-base px-3 py-2" />
