@@ -311,6 +311,35 @@ test('abort (disconnect): runJob exits without further db writes and leaves the 
   db.close();
 });
 
+test('stuck pathfinding: a goto() that never resolves times out and fails the action instead of hanging the job', async () => {
+  const db = createTestDb();
+  const blockMap = {};
+  setBlock(blockMap, { x: 0, y: 65, z: 0 }, 1, 'dirt');
+
+  const jobId = db.enqueue('flatten', 'player1', '{}', [
+    { action: 'break', x: 0, y: 65, z: 0 },
+  ]);
+
+  const bot = createFakeBot(blockMap);
+  let stopCalled = false;
+  bot.pathfinder.goto = () => new Promise(() => {}); // never resolves/rejects
+  bot.pathfinder.stop = () => { stopCalled = true; };
+
+  const engine = new ExecutionEngine(bot, db, { pathfindTimeoutMs: 20 });
+  await engine.runJob(jobId);
+
+  assert.ok(stopCalled, 'a stuck goto() must be force-stopped via bot.pathfinder.stop()');
+
+  const status = db.getStatus(jobId);
+  assert.strictEqual(status.status, 'failed', 'the job must resolve as failed, not hang forever');
+
+  const rows = db.db.prepare('SELECT * FROM job_actions WHERE job_id = ?').all(jobId);
+  assert.strictEqual(rows[0].status, 'failed');
+  assert.match(rows[0].error, /timed out/i);
+
+  db.close();
+});
+
 test('stock exhaustion: place with no matching stock fails with exact error, engine continues', async () => {
   const db = createTestDb();
   const blockMap = {};

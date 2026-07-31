@@ -3,6 +3,7 @@ const { Vec3 } = require('vec3');
 
 const PROGRESS_INTERVAL_MS = 10000;
 const NO_STOCK_ERROR = 'no fill block available (inventory exhausted)';
+const DEFAULT_PATHFIND_TIMEOUT_MS = 30000;
 
 // Candidate neighbor offsets to find a solid block to place against, tried in order.
 const FACE_OFFSETS = [
@@ -20,10 +21,38 @@ const FACE_OFFSETS = [
  * job_actions row shape produced by JobManager.
  */
 class ExecutionEngine {
-  constructor(bot, jobManager) {
+  constructor(bot, jobManager, { pathfindTimeoutMs = DEFAULT_PATHFIND_TIMEOUT_MS } = {}) {
     this.bot = bot;
     this.jobManager = jobManager;
     this.aborted = false;
+    this.pathfindTimeoutMs = pathfindTimeoutMs;
+  }
+
+  // mineflayer-pathfinder's goto() can hang forever on awkward/unreachable
+  // terrain (searchRadius is unbounded by default, and a 'partial'-status
+  // path_update never triggers goto.js's own resolve/reject listeners). Force
+  // a bound here so a stuck action fails and gets recorded instead of
+  // freezing the whole job - bot.pathfinder.stop() is what the library itself
+  // uses to cleanly reject an in-flight goto() (via its 'path_stop' listener).
+  async _gotoWithTimeout(goal) {
+    const gotoPromise = this.bot.pathfinder.goto(goal);
+    // Swallow a late rejection/resolution from the abandoned goto() call so
+    // it never surfaces as an unhandled rejection once we've already timed out.
+    gotoPromise.catch(() => {});
+
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        this.bot.pathfinder.stop(); // best-effort: ask pathfinder to actually stop moving
+        reject(new Error(`pathfinding timed out after ${this.pathfindTimeoutMs}ms`));
+      }, this.pathfindTimeoutMs);
+    });
+
+    try {
+      await Promise.race([gotoPromise, timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   // Called on bot disconnect, before the JobManager's db is closed: tells the
@@ -109,7 +138,7 @@ class ExecutionEngine {
   async _runBreak(jobId, row, stock) {
     const pos = new Vec3(row.x, row.y, row.z);
     try {
-      await this.bot.pathfinder.goto(new goals.GoalNear(pos.x, pos.y, pos.z, 1));
+      await this._gotoWithTimeout(new goals.GoalNear(pos.x, pos.y, pos.z, 1));
       const block = this.bot.blockAt(pos);
       await this.bot.dig(block);
       const blockType = block ? block.name : row.block_type;
@@ -146,7 +175,7 @@ class ExecutionEngine {
       if (!reference) {
         throw new Error(`no solid neighbor block to place against at ${pos.x},${pos.y},${pos.z}`);
       }
-      await this.bot.pathfinder.goto(new goals.GoalNear(pos.x, pos.y, pos.z, 1));
+      await this._gotoWithTimeout(new goals.GoalNear(pos.x, pos.y, pos.z, 1));
       await this.bot.equip(item, 'hand');
       await this.bot.placeBlock(reference.referenceBlock, reference.faceVector);
       stock.set(blockType, stock.get(blockType) - 1);
