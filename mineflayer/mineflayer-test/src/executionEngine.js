@@ -71,7 +71,9 @@ class ExecutionEngine {
     const interval = setInterval(() => {
       if (this.aborted) return;
       const status = this.jobManager.getStatus(jobId);
-      this.bot.chat(`Job ${jobId}: ${status.completed_actions}/${status.total_actions} actions complete`);
+      const line = `Job ${jobId}: ${status.completed_actions}/${status.total_actions} actions complete`;
+      this.bot.chat(line);
+      console.log(`[executionEngine] ${line}`);
     }, PROGRESS_INTERVAL_MS);
 
     // null = ran to completion; otherwise the status that stopped us.
@@ -145,6 +147,7 @@ class ExecutionEngine {
       stock.set(blockType, (stock.get(blockType) ?? 0) + 1);
       this.jobManager.markActionDone(jobId, row.seq);
     } catch (err) {
+      console.error(`[executionEngine] job ${jobId} seq ${row.seq} (${row.action}) failed: ${err.message}`);
       this.jobManager.markActionFailed(jobId, row.seq, err.message);
     }
   }
@@ -181,6 +184,7 @@ class ExecutionEngine {
       stock.set(blockType, stock.get(blockType) - 1);
       this.jobManager.markActionDone(jobId, row.seq);
     } catch (err) {
+      console.error(`[executionEngine] job ${jobId} seq ${row.seq} (${row.action}) failed: ${err.message}`);
       this.jobManager.markActionFailed(jobId, row.seq, err.message);
     }
   }
