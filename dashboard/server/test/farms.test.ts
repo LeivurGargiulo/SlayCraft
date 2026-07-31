@@ -56,7 +56,7 @@ test('GET /api/farms reports offline once flow into storage has stopped, even if
   assert.equal(res.json().farms[0].online, false);
 });
 
-test('GET /api/farms stays online when ingots get auto-compacted into blocks', async (t) => {
+test('GET /api/farms stays online when a tracked item grows even though an unrelated item in the same chest was withdrawn', async (t) => {
   const { app, db } = makeApp();
   const cookie = await loginAndGetCookie(app, db);
 
@@ -64,8 +64,8 @@ test('GET /api/farms stays online when ingots get auto-compacted into blocks', a
   const sampleAt = (minutesAgo: number) => new Date(now - minutesAgo * 60 * 1000).toISOString();
   const samples = [
     { sampledAt: sampleAt(10), storageCounts: { 'minecraft:iron_ingot': 64, 'minecraft:iron_block': 1664 } },
-    { sampledAt: sampleAt(5), storageCounts: { 'minecraft:iron_ingot': 367, 'minecraft:iron_block': 1664 } },
-    { sampledAt: sampleAt(0), storageCounts: { 'minecraft:iron_ingot': 367, 'minecraft:iron_block': 1728 } },
+    { sampledAt: sampleAt(5), storageCounts: { 'minecraft:iron_ingot': 367, 'minecraft:iron_block': 384 } },
+    { sampledAt: sampleAt(0), storageCounts: { 'minecraft:iron_ingot': 1117, 'minecraft:iron_block': 384 } },
   ];
 
   const fetchMock = mock.method(globalThis, 'fetch', async (url: string) => {

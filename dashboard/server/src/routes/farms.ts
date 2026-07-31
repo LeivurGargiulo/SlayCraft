@@ -39,13 +39,12 @@ async function isProducing(id: string): Promise<boolean> {
     samples: Array<{ sampledAt: string; storageCounts: Record<string, number> }>;
   };
   if (!Array.isArray(data.samples) || data.samples.length < 2) return false;
-  const itemWeight = (itemId: string) => (itemId.endsWith('_block') ? 9 : itemId.endsWith('_nugget') ? 1 / 9 : 1);
-  const total = (counts: Record<string, number>) =>
-    Object.entries(counts).reduce((sum, [itemId, n]) => sum + n * itemWeight(itemId), 0);
   const last = data.samples[data.samples.length - 1];
   const windowStart = new Date(last.sampledAt).getTime() - PRODUCING_WINDOW_MS;
   const baseline = data.samples.find((s) => new Date(s.sampledAt).getTime() >= windowStart) ?? last;
-  return total(last.storageCounts) > total(baseline.storageCounts);
+  return Object.entries(last.storageCounts).some(
+    ([itemId, count]) => count > (baseline.storageCounts[itemId] ?? 0)
+  );
 }
 
 async function withMcfm<T>(reply: import('fastify').FastifyReply, fn: () => Promise<T>) {
