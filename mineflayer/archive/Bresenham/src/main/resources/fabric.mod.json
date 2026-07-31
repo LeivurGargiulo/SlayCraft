@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "bresenham-bot",
+  "version": "${version}",
+  "name": "Bresenham Bot",
+  "description": "A deterministic, autonomous Minecraft bot system with Gemini AI advisory layer",
+  "authors": ["Bresenham"],
+  "contact": {},
+  "license": "MIT",
+  "icon": "",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.bresenham.bot.BresenhamMod"]
+  },
+  "mixins": ["bresenham.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "baritone": "*",
+    "carpet": "*"
+  }
+}

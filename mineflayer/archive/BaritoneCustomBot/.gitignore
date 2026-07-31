@@ -1,0 +1,71 @@
+# ============================================
+# Baritone AI — Root .gitignore
+# ============================================
+
+# ------ Environment & Secrets ------
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ------ Node.js (backend/) ------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ------ Java / Gradle (mod/) ------
+# Build outputs
+mod/build/
+mod/.gradle/
+build/
+.gradle/
+
+# Gradle wrapper (optional — remove these lines if you want to commit the wrapper)
+# mod/gradle/wrapper/gradle-wrapper.jar
+
+# ------ IDE & Editor ------
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# ------ OS Files ------
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# ------ Runtime & Logs ------
+*.log
+logs/
+
+# ------ Minecraft / Fabric ------
+run/
+mod/run/
+*.hprof
+
+# ------ Memory Persistence ------
+# The bot's memory file is generated at runtime; uncomment to track it in git
+# backend/memory/memory.json
+
+# ------ Misc ------
+*.tmp
+*.bak
+*.swp
+*~
+.cache/

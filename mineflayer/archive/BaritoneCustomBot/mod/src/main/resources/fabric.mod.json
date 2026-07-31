@@ -1,0 +1,25 @@
+{
+    "schemaVersion": 1,
+    "id": "baritone-ai",
+    "version": "${version}",
+    "name": "Baritone AI",
+    "description": "Autonomous AI bot powered by Gemini and Baritone",
+    "authors": [],
+    "contact": {},
+    "license": "MIT",
+    "environment": "client",
+    "entrypoints": {
+        "client": [
+            "com.baritoneai.BaritoneAIMod"
+        ]
+    },
+    "depends": {
+        "fabricloader": ">=0.18.0",
+        "minecraft": "~1.21.11",
+        "java": ">=21",
+        "fabric-api": "*"
+    },
+    "suggests": {
+        "baritone": "*"
+    }
+}

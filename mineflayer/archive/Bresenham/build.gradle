@@ -1,0 +1,61 @@
+plugins {
+    id "fabric-loom" version "1.9-SNAPSHOT"
+    id "java"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+    maven { url "https://maven.fabricmc.net/" }
+    // Baritone repository
+    maven { url "https://repo.nea.moe/releases" }
+}
+
+dependencies {
+    // Minecraft and Fabric
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Google Gemini AI SDK
+    implementation "com.google.genai:google-genai:1.0.0"
+
+    // Baritone API (compile-only, soft dependency at runtime)
+    // modCompileOnly "baritone:baritone-api-fabric:1.15.0"
+
+    // Carpet Mod (compile-only, soft dependency at runtime)
+    // modCompileOnly "carpet:fabric-carpet:1.21.4"
+
+    // Gson is bundled with Minecraft, no need to add explicitly
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    withSourcesJar()
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.archives_base_name}" }
+    }
+}

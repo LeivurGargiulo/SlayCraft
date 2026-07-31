@@ -2,6 +2,7 @@ services:
   mcserver:
     build: ./servers/fabric
     hostname: mcserver
+    stop_grace_period: 60s
     volumes:
       - ./servers/fabric:/server
     ports:
