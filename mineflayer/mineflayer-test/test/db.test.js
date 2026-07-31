@@ -320,3 +320,74 @@ test('database persistence across method calls', async (t) => {
 
   db.close();
 });
+
+test('markActionDone increments completed_actions', async (t) => {
+  const db = createTestDb();
+
+  const jobId = db.enqueue('flatten', 'player1', '{}', [
+    { action: 'break', x: 0, y: 65, z: 0 },
+    { action: 'break', x: 1, y: 65, z: 0 },
+    { action: 'break', x: 2, y: 65, z: 0 },
+  ]);
+
+  let job = db.getStatus(jobId);
+  assert.strictEqual(job.completed_actions, 0, 'initial completed_actions should be 0');
+  const initialUpdatedAt = job.updated_at;
+
+  db.markActionDone(jobId, 0);
+  job = db.getStatus(jobId);
+  assert.strictEqual(job.completed_actions, 1, 'completed_actions should increment to 1');
+  assert.ok(job.updated_at >= initialUpdatedAt, 'updated_at should be bumped');
+
+  db.markActionDone(jobId, 1);
+  job = db.getStatus(jobId);
+  assert.strictEqual(job.completed_actions, 2, 'completed_actions should increment to 2');
+
+  db.markActionDone(jobId, 2);
+  job = db.getStatus(jobId);
+  assert.strictEqual(job.completed_actions, 3, 'completed_actions should increment to 3');
+
+  db.close();
+});
+
+test('markActionFailed does NOT increment completed_actions but bumps updated_at', async (t) => {
+  const db = createTestDb();
+
+  const jobId = db.enqueue('flatten', 'player1', '{}', [
+    { action: 'break', x: 0, y: 65, z: 0 },
+    { action: 'break', x: 1, y: 65, z: 0 },
+  ]);
+
+  let job = db.getStatus(jobId);
+  const initialUpdatedAt = job.updated_at;
+
+  db.markActionFailed(jobId, 0, 'bedrock');
+  job = db.getStatus(jobId);
+  assert.strictEqual(job.completed_actions, 0, 'completed_actions should remain 0 after failed action');
+  assert.ok(job.updated_at >= initialUpdatedAt, 'updated_at should be bumped on failure');
+
+  db.markActionDone(jobId, 1);
+  job = db.getStatus(jobId);
+  assert.strictEqual(job.completed_actions, 1, 'completed_actions should only count done actions, not failed');
+
+  db.close();
+});
+
+test('completed_actions tracks done actions only, mixed with failed', async (t) => {
+  const db = createTestDb();
+
+  const jobId = db.enqueue('flatten', 'player1', '{}', [
+    { action: 'break', x: 0, y: 65, z: 0 },
+    { action: 'break', x: 1, y: 65, z: 0 },
+    { action: 'break', x: 2, y: 65, z: 0 },
+  ]);
+
+  db.markActionDone(jobId, 0);
+  db.markActionFailed(jobId, 1, 'error');
+  db.markActionDone(jobId, 2);
+
+  const job = db.getStatus(jobId);
+  assert.strictEqual(job.completed_actions, 2, 'completed_actions should be 2 (done count, not including failed)');
+
+  db.close();
+});

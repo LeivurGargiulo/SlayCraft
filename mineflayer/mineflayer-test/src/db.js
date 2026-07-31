@@ -72,6 +72,14 @@ class JobManager {
       UPDATE job_actions SET status = 'failed', error = ? WHERE job_id = ? AND seq = ?
     `);
 
+    this.stmtIncrementCompleted = this.db.prepare(`
+      UPDATE jobs SET completed_actions = completed_actions + 1, updated_at = ? WHERE id = ?
+    `);
+
+    this.stmtUpdateJobTimestamp = this.db.prepare(`
+      UPDATE jobs SET updated_at = ? WHERE id = ?
+    `);
+
     this.stmtGetPendingActions = this.db.prepare(`
       SELECT * FROM job_actions WHERE job_id = ? AND status = 'pending' ORDER BY seq ASC
     `);
@@ -164,11 +172,25 @@ class JobManager {
   }
 
   markActionDone(jobId, seq) {
-    this.stmtMarkActionDone.run(jobId, seq);
+    const now = Date.now();
+
+    const transaction = this.db.transaction(() => {
+      this.stmtMarkActionDone.run(jobId, seq);
+      this.stmtIncrementCompleted.run(now, jobId);
+    });
+
+    transaction();
   }
 
   markActionFailed(jobId, seq, error) {
-    this.stmtMarkActionFailed.run(error, jobId, seq);
+    const now = Date.now();
+
+    const transaction = this.db.transaction(() => {
+      this.stmtMarkActionFailed.run(error, jobId, seq);
+      this.stmtUpdateJobTimestamp.run(now, jobId);
+    });
+
+    transaction();
   }
 
   getPendingActions(jobId) {
