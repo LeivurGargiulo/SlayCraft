@@ -13,6 +13,7 @@ import Card from '../components/Card';
 import ImageZoom from '../components/ImageZoom';
 import FileUploadButton from '../components/FileUploadButton';
 import Modal from '../components/Modal';
+import ConfirmModal from '../components/ConfirmModal';
 import type { StorageItem, FarmDetail as FarmDetailType } from '../api/types';
 
 type StorageRow = { id: string; label: string; x: string; y: string; z: string };
@@ -85,6 +86,7 @@ export default function GranjaDetail() {
   const [editingMeta, setEditingMeta] = useState(false);
   const [expectedRates, setExpectedRates] = useState<Array<{ itemId: string; rate: string }>>([]);
   const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [config, setConfig] = useState<ConfigForm | null>(null);
 
   if (farm.isLoading) return <p className="text-slate-400">Cargando…</p>;
@@ -120,7 +122,6 @@ export default function GranjaDetail() {
   }
 
   async function onDeleteFarm() {
-    if (!confirm(`¿Eliminar la granja "${f.name}" de la configuración de MCFarmManager? Esta acción no se puede deshacer.`)) return;
     await deleteFarm.mutateAsync(f.id);
     navigate('/granjas');
   }
@@ -160,12 +161,27 @@ export default function GranjaDetail() {
           <button onClick={startEditConfig} className="rounded border border-border px-3 py-1.5 text-sm text-cyan hover:bg-cyan/10">
             Editar configuración
           </button>
-          <button onClick={onDeleteFarm} className="rounded border border-status-blocked px-3 py-1.5 text-sm text-status-blocked hover:bg-status-blocked/10">
+          <button
+            onClick={() => setDeleteModalOpen(true)}
+            className="rounded border border-status-blocked px-3 py-1.5 text-sm text-status-blocked hover:bg-status-blocked/10"
+          >
             Eliminar granja
           </button>
         </div>
       </div>
       {deleteFarm.isError && <p className="text-sm text-status-blocked">{deleteFarm.error.message}</p>}
+
+      <ConfirmModal
+        open={deleteModalOpen}
+        title="Eliminar granja"
+        message={`¿Eliminar la granja "${f.name}" de la configuración de MCFarmManager? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        onCancel={() => setDeleteModalOpen(false)}
+        onConfirm={() => {
+          setDeleteModalOpen(false);
+          onDeleteFarm();
+        }}
+      />
 
       <div className="grid grid-cols-2 gap-4">
         <Card>
@@ -405,10 +421,10 @@ export default function GranjaDetail() {
             />
             <div>
               <div className="mb-1 text-xs text-slate-400">Ancla (posición central)</div>
-              <div className="flex gap-2">
-                <input value={config.x} onChange={(e) => setConfig({ ...config, x: e.target.value })} placeholder="X" className="w-1/3 rounded border border-border bg-base px-3 py-2" />
-                <input value={config.y} onChange={(e) => setConfig({ ...config, y: e.target.value })} placeholder="Y" className="w-1/3 rounded border border-border bg-base px-3 py-2" />
-                <input value={config.z} onChange={(e) => setConfig({ ...config, z: e.target.value })} placeholder="Z" className="w-1/3 rounded border border-border bg-base px-3 py-2" />
+              <div className="flex flex-wrap gap-2">
+                <input value={config.x} onChange={(e) => setConfig({ ...config, x: e.target.value })} placeholder="X" className="min-w-0 flex-1 rounded border border-border bg-base px-3 py-2" />
+                <input value={config.y} onChange={(e) => setConfig({ ...config, y: e.target.value })} placeholder="Y" className="min-w-0 flex-1 rounded border border-border bg-base px-3 py-2" />
+                <input value={config.z} onChange={(e) => setConfig({ ...config, z: e.target.value })} placeholder="Z" className="min-w-0 flex-1 rounded border border-border bg-base px-3 py-2" />
               </div>
             </div>
             <input
@@ -427,7 +443,7 @@ export default function GranjaDetail() {
             <div className="space-y-1">
               <div className="text-xs text-slate-400">Contenedores</div>
               {config.storageRows.map((row, i) => (
-                <div key={i} className="flex gap-2">
+                <div key={i} className="flex flex-wrap items-center gap-2 rounded border border-border/50 p-2 sm:border-0 sm:p-0">
                   <input
                     value={row.id}
                     onChange={(e) => {
@@ -436,7 +452,7 @@ export default function GranjaDetail() {
                       setConfig({ ...config, storageRows: rows });
                     }}
                     placeholder="id"
-                    className="w-24 rounded border border-border bg-base px-2 py-1 text-sm"
+                    className="w-20 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm sm:w-24 sm:flex-none"
                   />
                   <input
                     value={row.label}
@@ -446,7 +462,7 @@ export default function GranjaDetail() {
                       setConfig({ ...config, storageRows: rows });
                     }}
                     placeholder="etiqueta"
-                    className="flex-1 rounded border border-border bg-base px-2 py-1 text-sm"
+                    className="min-w-0 flex-[2] rounded border border-border bg-base px-2 py-1 text-sm sm:flex-1"
                   />
                   {(['x', 'y', 'z'] as const).map((axis) => (
                     <input
@@ -458,7 +474,7 @@ export default function GranjaDetail() {
                         setConfig({ ...config, storageRows: rows });
                       }}
                       placeholder={axis.toUpperCase()}
-                      className="w-14 rounded border border-border bg-base px-2 py-1 text-sm"
+                      className="w-12 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm sm:w-14 sm:flex-none"
                     />
                   ))}
                   <button
@@ -486,15 +502,15 @@ export default function GranjaDetail() {
                 Tiene punto de AFK
               </label>
               {config.hasAfkSpot && (
-                <div className="flex gap-2">
-                  <input value={config.afkX} onChange={(e) => setConfig({ ...config, afkX: e.target.value })} placeholder="X" className="w-1/4 rounded border border-border bg-base px-2 py-1 text-sm" />
-                  <input value={config.afkY} onChange={(e) => setConfig({ ...config, afkY: e.target.value })} placeholder="Y" className="w-1/4 rounded border border-border bg-base px-2 py-1 text-sm" />
-                  <input value={config.afkZ} onChange={(e) => setConfig({ ...config, afkZ: e.target.value })} placeholder="Z" className="w-1/4 rounded border border-border bg-base px-2 py-1 text-sm" />
+                <div className="flex flex-wrap gap-2">
+                  <input value={config.afkX} onChange={(e) => setConfig({ ...config, afkX: e.target.value })} placeholder="X" className="w-16 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm" />
+                  <input value={config.afkY} onChange={(e) => setConfig({ ...config, afkY: e.target.value })} placeholder="Y" className="w-16 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm" />
+                  <input value={config.afkZ} onChange={(e) => setConfig({ ...config, afkZ: e.target.value })} placeholder="Z" className="w-16 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm" />
                   <input
                     value={config.afkRadius}
                     onChange={(e) => setConfig({ ...config, afkRadius: e.target.value })}
                     placeholder="Radio"
-                    className="w-1/4 rounded border border-border bg-base px-2 py-1 text-sm"
+                    className="w-16 min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm"
                   />
                 </div>
               )}
