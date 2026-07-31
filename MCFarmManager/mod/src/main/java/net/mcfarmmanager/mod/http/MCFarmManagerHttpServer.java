@@ -134,6 +134,15 @@ public final class MCFarmManagerHttpServer {
         return idx >= 0 ? host.substring(0, idx) : host;
     }
 
+    private boolean isAuthorizedWrite(HttpExchange exchange) {
+        String expected = net.mcfarmmanager.mod.MCFarmManagerExtension.Settings.mcfarmmanagerApiToken;
+        if (expected == null || expected.isEmpty()) {
+            return false;
+        }
+        String provided = exchange.getRequestHeaders().getFirst("X-API-Token");
+        return expected.equals(provided);
+    }
+
     public void stop() {
         if (httpServer != null) {
             httpServer.stop(0);

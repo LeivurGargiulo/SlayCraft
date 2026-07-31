@@ -59,6 +59,9 @@ public final class MCFarmManagerExtension implements CarpetExtension {
 
         @Rule(categories = RuleCategory.FEATURE)
         public static int mcfarmmanagerHistoryRetentionDays = 30;
+
+        @Rule(categories = RuleCategory.FEATURE)
+        public static String mcfarmmanagerApiToken = "";
     }
 
     @Override
@@ -66,22 +69,25 @@ public final class MCFarmManagerExtension implements CarpetExtension {
         if (!"en_us".equals(language)) {
             return null;
         }
-        return Map.of(
-                "mcfarmmanager.rule.mcfarmmanagerEnabled.name", "MCFarmManager Enabled",
-                "mcfarmmanager.rule.mcfarmmanagerEnabled.desc",
-                "Master on/off switch. When false, the HTTP server and sampler don't start.",
-                "mcfarmmanager.rule.mcfarmmanagerHttpPort.name", "MCFarmManager HTTP Port",
-                "mcfarmmanager.rule.mcfarmmanagerHttpPort.desc",
-                "Port the HTTP server (API + dashboard) binds to.",
-                "mcfarmmanager.rule.mcfarmmanagerHttpBindAddress.name", "MCFarmManager HTTP Bind Address",
-                "mcfarmmanager.rule.mcfarmmanagerHttpBindAddress.desc",
-                "Bind address for the HTTP server. LAN-trusted by design.",
-                "mcfarmmanager.rule.mcfarmmanagerSampleIntervalMinutes.name", "MCFarmManager Sample Interval Minutes",
-                "mcfarmmanager.rule.mcfarmmanagerSampleIntervalMinutes.desc",
-                "How often farm history is sampled, in minutes.",
-                "mcfarmmanager.rule.mcfarmmanagerHistoryRetentionDays.name", "MCFarmManager History Retention Days",
-                "mcfarmmanager.rule.mcfarmmanagerHistoryRetentionDays.desc",
-                "Farm history rows older than this many days are pruned on each sample cycle.");
+        return Map.ofEntries(
+                Map.entry("mcfarmmanager.rule.mcfarmmanagerEnabled.name", "MCFarmManager Enabled"),
+                Map.entry("mcfarmmanager.rule.mcfarmmanagerEnabled.desc",
+                        "Master on/off switch. When false, the HTTP server and sampler don't start."),
+                Map.entry("mcfarmmanager.rule.mcfarmmanagerHttpPort.name", "MCFarmManager HTTP Port"),
+                Map.entry("mcfarmmanager.rule.mcfarmmanagerHttpPort.desc",
+                        "Port the HTTP server (API + dashboard) binds to."),
+                Map.entry("mcfarmmanager.rule.mcfarmmanagerHttpBindAddress.name", "MCFarmManager HTTP Bind Address"),
+                Map.entry("mcfarmmanager.rule.mcfarmmanagerHttpBindAddress.desc",
+                        "Bind address for the HTTP server. LAN-trusted by design."),
+                Map.entry("mcfarmmanager.rule.mcfarmmanagerSampleIntervalMinutes.name", "MCFarmManager Sample Interval Minutes"),
+                Map.entry("mcfarmmanager.rule.mcfarmmanagerSampleIntervalMinutes.desc",
+                        "How often farm history is sampled, in minutes."),
+                Map.entry("mcfarmmanager.rule.mcfarmmanagerHistoryRetentionDays.name", "MCFarmManager History Retention Days"),
+                Map.entry("mcfarmmanager.rule.mcfarmmanagerHistoryRetentionDays.desc",
+                        "Farm history rows older than this many days are pruned on each sample cycle."),
+                Map.entry("mcfarmmanager.rule.mcfarmmanagerApiToken.name", "MCFarmManager API Token"),
+                Map.entry("mcfarmmanager.rule.mcfarmmanagerApiToken.desc",
+                        "Shared secret required in the X-API-Token header for farm-config write requests (POST/PUT/DELETE on /farms). Empty (default) rejects all writes."));
     }
 
     @Override
