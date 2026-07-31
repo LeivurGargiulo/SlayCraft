@@ -11,3 +11,8 @@ export const staggerContainer: Variants = {
     transition: { staggerChildren: 0.06 },
   },
 };
+
+export const zoomIn: Variants = {
+  hidden: { opacity: 0, scale: 0.94 },
+  show: { opacity: 1, scale: 1 },
+};

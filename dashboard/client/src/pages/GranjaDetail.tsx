@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useFarm, useFarmHistory, useUpdateFarmMetadata, useUploadFarmImage, useDeleteFarmImage } from '../api/hooks';
 import Card from '../components/Card';
+import ImageZoom from '../components/ImageZoom';
 import type { StorageItem } from '../api/types';
 
 // A filled shulker box represents its contents, not an item of its own; an empty box still counts as one shulker_box.
@@ -287,9 +288,15 @@ export default function GranjaDetail() {
       <Card>
         <h2 className="mb-2 font-mono text-slate-200">Imágenes</h2>
         <div className="grid grid-cols-4 gap-2">
-          {f.images.map((img) => (
+          {f.images.map((img, i) => (
             <div key={img.id} className="relative">
-              <img src={`/uploads/${img.path}`} alt={img.caption ?? ''} className="h-24 w-full rounded object-cover" />
+              <ImageZoom
+                src={`/uploads/${img.path}`}
+                alt={img.caption ?? ''}
+                className="h-24 w-full rounded object-cover"
+                index={i}
+                gallery={f.images.map((g) => ({ src: `/uploads/${g.path}`, alt: g.caption ?? '' }))}
+              />
               <button
                 onClick={() => deleteImage.mutate(img.id)}
                 className="absolute right-1 top-1 rounded bg-black/60 px-1 text-xs text-status-blocked"

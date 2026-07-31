@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useGallery, useUploadGalleryImage, useUpdateGalleryImage, useDeleteGalleryImage } from '../api/hooks';
+import ImageZoom from '../components/ImageZoom';
 
 export default function Galeria() {
   const gallery = useGallery();
@@ -36,9 +37,15 @@ export default function Galeria() {
       {upload.isError && <p className="text-sm text-status-blocked">{upload.error.message}</p>}
 
       <div className="grid grid-cols-4 gap-3">
-        {(gallery.data?.images ?? []).map((img) => (
+        {(gallery.data?.images ?? []).map((img, i) => (
           <div key={img.id} className="overflow-hidden rounded-lg border border-border bg-panel">
-            <img src={`/uploads/${img.path}`} alt={img.caption ?? ''} className="h-32 w-full object-cover" />
+            <ImageZoom
+              src={`/uploads/${img.path}`}
+              alt={img.caption ?? ''}
+              className="h-32 w-full object-cover"
+              index={i}
+              gallery={(gallery.data?.images ?? []).map((g) => ({ src: `/uploads/${g.path}`, alt: g.caption ?? '' }))}
+            />
             <div className="p-2">
               <input
                 defaultValue={img.caption ?? ''}

@@ -7,6 +7,8 @@ import {
 import type { Task, TaskPriority, TaskStatus } from '../api/types';
 import Card from '../components/Card';
 import Modal from '../components/Modal';
+import Select from '../components/Select';
+import MultiSelect from '../components/MultiSelect';
 import StatusBadge from '../components/StatusBadge';
 import PriorityBadge from '../components/PriorityBadge';
 
@@ -110,54 +112,45 @@ export default function Tareas() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <select
+        <Select
           value={assigneeFilter}
-          onChange={(e) => setAssigneeFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-          className="rounded border border-border bg-base px-2 py-1 text-sm"
-        >
-          <option value="all">Todos los jugadores</option>
-          {(players.data?.players ?? []).map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.minecraft_name}
-            </option>
-          ))}
-        </select>
-        <select
+          onChange={setAssigneeFilter}
+          className="w-48"
+          searchable
+          options={[
+            { value: 'all', label: 'Todos los jugadores' },
+            ...(players.data?.players ?? []).map((p) => ({ value: p.id, label: p.minecraft_name })),
+          ]}
+        />
+        <Select
           value={priorityFilter}
-          onChange={(e) => setPriorityFilter(e.target.value as TaskPriority | 'all')}
-          className="rounded border border-border bg-base px-2 py-1 text-sm"
-        >
-          <option value="all">Toda prioridad</option>
-          {Object.entries(PRIORITY_LABEL).map(([v, label]) => (
-            <option key={v} value={v}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <select
+          onChange={setPriorityFilter}
+          className="w-40"
+          options={[
+            { value: 'all', label: 'Toda prioridad' },
+            ...Object.entries(PRIORITY_LABEL).map(([v, label]) => ({ value: v as TaskPriority, label })),
+          ]}
+        />
+        <Select
           value={farmFilter}
-          onChange={(e) => setFarmFilter(e.target.value)}
-          className="rounded border border-border bg-base px-2 py-1 text-sm"
-        >
-          <option value="all">Toda granja</option>
-          {(farms.data?.farms ?? []).map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name}
-            </option>
-          ))}
-        </select>
-        <select
+          onChange={setFarmFilter}
+          className="w-40"
+          searchable
+          options={[
+            { value: 'all', label: 'Toda granja' },
+            ...(farms.data?.farms ?? []).map((f) => ({ value: f.id, label: f.name })),
+          ]}
+        />
+        <Select
           value={projectFilter}
-          onChange={(e) => setProjectFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-          className="rounded border border-border bg-base px-2 py-1 text-sm"
-        >
-          <option value="all">Todo proyecto</option>
-          {(projects.data?.projects ?? []).map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+          onChange={setProjectFilter}
+          className="w-40"
+          searchable
+          options={[
+            { value: 'all', label: 'Todo proyecto' },
+            ...(projects.data?.projects ?? []).map((p) => ({ value: p.id, label: p.name })),
+          ]}
+        />
       </div>
 
       <div className="space-y-2">
@@ -192,17 +185,12 @@ export default function Tareas() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <select
+                <Select
                   value={t.status}
-                  onChange={(e) => updateTask.mutate({ id: t.id, status: e.target.value as TaskStatus })}
-                  className="rounded border border-border bg-base px-2 py-1 text-sm"
-                >
-                  {STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {STATUS_LABEL[s]}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(status) => updateTask.mutate({ id: t.id, status })}
+                  className="w-32"
+                  options={STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
+                />
                 <button onClick={() => openEdit(t)} className="text-sm text-cyan hover:underline">
                   Editar
                 </button>
@@ -264,17 +252,12 @@ export default function Tareas() {
             className="w-full rounded border border-border bg-base px-3 py-2"
           />
           <div className="flex gap-2">
-            <select
+            <Select
               value={form.priority}
-              onChange={(e) => setForm({ ...form, priority: e.target.value as TaskPriority })}
-              className="rounded border border-border bg-base px-3 py-2"
-            >
-              {Object.entries(PRIORITY_LABEL).map(([v, label]) => (
-                <option key={v} value={v}>
-                  {label}
-                </option>
-              ))}
-            </select>
+              onChange={(priority) => setForm({ ...form, priority })}
+              className="w-32"
+              options={Object.entries(PRIORITY_LABEL).map(([v, label]) => ({ value: v as TaskPriority, label }))}
+            />
             <input
               type="date"
               value={form.due_date}
@@ -283,52 +266,35 @@ export default function Tareas() {
             />
           </div>
           <div className="flex gap-2">
-            <select
+            <Select
               value={form.farm_id}
-              onChange={(e) => setForm({ ...form, farm_id: e.target.value })}
-              className="flex-1 rounded border border-border bg-base px-3 py-2"
-            >
-              <option value="">Sin asignar (granja)</option>
-              {(farms.data?.farms ?? []).map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-            <select
+              onChange={(farm_id) => setForm({ ...form, farm_id })}
+              className="flex-1"
+              searchable
+              options={[
+                { value: '', label: 'Sin asignar (granja)' },
+                ...(farms.data?.farms ?? []).map((f) => ({ value: f.id, label: f.name })),
+              ]}
+            />
+            <Select
               value={form.project_id}
-              onChange={(e) => setForm({ ...form, project_id: e.target.value })}
-              className="flex-1 rounded border border-border bg-base px-3 py-2"
-            >
-              <option value="">Sin asignar (proyecto)</option>
-              {(projects.data?.projects ?? []).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+              onChange={(project_id) => setForm({ ...form, project_id })}
+              className="flex-1"
+              searchable
+              options={[
+                { value: '', label: 'Sin asignar (proyecto)' },
+                ...(projects.data?.projects ?? []).map((p) => ({ value: String(p.id), label: p.name })),
+              ]}
+            />
           </div>
           <div>
             <div className="mb-1 text-sm text-slate-400">Asignar a</div>
-            <div className="flex flex-wrap gap-2">
-              {(players.data?.players ?? []).map((p) => (
-                <label key={p.id} className="flex items-center gap-1 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.assignee_ids.includes(p.id)}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        assignee_ids: e.target.checked
-                          ? [...form.assignee_ids, p.id]
-                          : form.assignee_ids.filter((id) => id !== p.id),
-                      })
-                    }
-                  />
-                  {p.minecraft_name}
-                </label>
-              ))}
-            </div>
+            <MultiSelect
+              values={form.assignee_ids}
+              onChange={(assignee_ids) => setForm({ ...form, assignee_ids })}
+              placeholder="Sin asignar"
+              options={(players.data?.players ?? []).map((p) => ({ value: p.id, label: p.minecraft_name }))}
+            />
           </div>
           <button onClick={onSave} className="w-full rounded bg-gold px-3 py-2 font-medium text-base hover:opacity-90">
             Guardar

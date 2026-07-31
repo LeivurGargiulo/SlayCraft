@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useProjects, useUpdateProject, useDeleteProject, useUploadProjectImage, useDeleteProjectImage } from '../api/hooks';
 import Card from '../components/Card';
+import ImageZoom from '../components/ImageZoom';
 
 export default function ProyectoDetail() {
   const { id } = useParams<{ id: string }>();
@@ -85,9 +86,15 @@ export default function ProyectoDetail() {
       <Card>
         <h2 className="mb-2 font-mono text-slate-200">Imágenes</h2>
         <div className="grid grid-cols-4 gap-2">
-          {project.images.map((img) => (
+          {project.images.map((img, i) => (
             <div key={img.id} className="relative">
-              <img src={`/uploads/${img.path}`} alt={img.caption ?? ''} className="h-24 w-full rounded object-cover" />
+              <ImageZoom
+                src={`/uploads/${img.path}`}
+                alt={img.caption ?? ''}
+                className="h-24 w-full rounded object-cover"
+                index={i}
+                gallery={project.images.map((g) => ({ src: `/uploads/${g.path}`, alt: g.caption ?? '' }))}
+              />
               <button
                 onClick={() => deleteImage.mutate(img.id)}
                 className="absolute right-1 top-1 rounded bg-black/60 px-1 text-xs text-status-blocked"
