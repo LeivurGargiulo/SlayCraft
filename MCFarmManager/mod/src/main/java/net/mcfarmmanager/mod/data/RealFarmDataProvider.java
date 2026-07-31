@@ -2,9 +2,10 @@
 // fabric-carpet-1.21.11-1.4.194+v251223 jar (official Mojang mappings rename ResourceLocation -> Identifier in this
 // version): MinecraftServer.getLevel(ResourceKey<Level>) with the key built from Registries.DIMENSION + Identifier.parse;
 // EntityGetter.getEntitiesOfClass(Class, AABB) (inherited by ServerLevel via Level) for the bounding-box entity scan;
-// Level.getBlockEntity(BlockPos) + "instanceof Container" for direct inventory reads (ChestBlockEntity,
-// TrappedChestBlockEntity, BarrelBlockEntity, ShulkerBoxBlockEntity, HopperBlockEntity, DispenserBlockEntity and
-// DropperBlockEntity all ultimately implement net.minecraft.world.Container); Level.isLoaded(BlockPos) for chunk-loaded
+// HopperBlockEntity.getContainerAt(Level, BlockPos) for inventory reads at a configured storage position -
+// same helper vanilla hoppers use, so it transparently merges double chests via ChestBlock's
+// WorldlyContainerHolder instead of returning a single ChestBlockEntity's 27-slot view;
+// Level.isLoaded(BlockPos) for chunk-loaded
 // checks; and carpet.patches.EntityPlayerMPFake (extends ServerPlayer) located via
 // MinecraftServer.getPlayerList().getPlayerByName(name) for fake-player status.
 //
@@ -36,7 +37,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.HopperBlockEntity;
 import net.minecraft.world.phys.AABB;
 
 import java.util.ArrayList;
@@ -119,11 +120,11 @@ public final class RealFarmDataProvider implements FarmDataProvider {
             List<StorageInfo> result = new ArrayList<>();
             for (StorageConfig storageConfig : farm.storage()) {
                 Position pos = storageConfig.position();
-                BlockEntity blockEntity = level.getBlockEntity(new BlockPos(pos.x(), pos.y(), pos.z()));
+                Container container = HopperBlockEntity.getContainerAt(level, new BlockPos(pos.x(), pos.y(), pos.z()));
 
                 int capacity = 0;
                 List<ItemStackInfo> items = List.of();
-                if (blockEntity instanceof Container container) {
+                if (container != null) {
                     capacity = container.getContainerSize();
                     List<ItemStackInfo> slotItems = new ArrayList<>();
                     for (int slot = 0; slot < capacity; slot++) {
