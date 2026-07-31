@@ -215,6 +215,13 @@ export function useUploadProjectImage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
   });
 }
+export function useDeleteProjectImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => apiFetch<void>(`/project-images/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+  });
+}
 
 // --- gallery ---
 export function useGallery() {

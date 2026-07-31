@@ -33,6 +33,13 @@ test('project CRUD and image upload', async () => {
 
   const get = await app.inject({ method: 'GET', url: `/api/projects/${project.id}`, headers: { cookie } });
   assert.equal(get.json().images.length, 1);
+
+  const imageId = get.json().images[0].id;
+  const del = await app.inject({ method: 'DELETE', url: `/api/project-images/${imageId}`, headers: { cookie } });
+  assert.equal(del.statusCode, 204);
+
+  const get2 = await app.inject({ method: 'GET', url: `/api/projects/${project.id}`, headers: { cookie } });
+  assert.equal(get2.json().images.length, 0);
 });
 
 test('project coordinates can be set and updated', async () => {

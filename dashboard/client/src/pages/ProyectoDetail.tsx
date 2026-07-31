@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useProjects, useUpdateProject, useDeleteProject, useUploadProjectImage } from '../api/hooks';
+import { useProjects, useUpdateProject, useDeleteProject, useUploadProjectImage, useDeleteProjectImage } from '../api/hooks';
 import Card from '../components/Card';
 
 export default function ProyectoDetail() {
@@ -9,6 +9,7 @@ export default function ProyectoDetail() {
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
   const uploadImage = useUploadProjectImage();
+  const deleteImage = useDeleteProjectImage();
   const fileInput = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
 
@@ -85,7 +86,16 @@ export default function ProyectoDetail() {
         <h2 className="mb-2 font-mono text-slate-200">Imágenes</h2>
         <div className="grid grid-cols-4 gap-2">
           {project.images.map((img) => (
-            <img key={img.id} src={`/uploads/${img.path}`} alt={img.caption ?? ''} className="h-24 w-full rounded object-cover" />
+            <div key={img.id} className="relative">
+              <img src={`/uploads/${img.path}`} alt={img.caption ?? ''} className="h-24 w-full rounded object-cover" />
+              <button
+                onClick={() => deleteImage.mutate(img.id)}
+                className="absolute right-1 top-1 rounded bg-black/60 px-1 text-xs text-status-blocked"
+                aria-label="Eliminar imagen"
+              >
+                ✕
+              </button>
+            </div>
           ))}
         </div>
         <input ref={fileInput} type="file" accept="image/*" onChange={onFileChange} className="mt-3 text-sm" />
