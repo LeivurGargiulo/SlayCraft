@@ -11,6 +11,7 @@
     "@google/genai": "^2.15.0",
     "ajv": "^8.20.0",
     "better-sqlite3": "^13.0.2",
+    "dotenv": "^17.4.2",
     "mineflayer": "^4.37.1",
     "mineflayer-pathfinder": "^2.4.5",
     "openai": "^7.3.0",
