@@ -1,5 +1,9 @@
+const path = require('path')
 const mineflayer = require('mineflayer')
-const { pathfinder, Movements, goals } = require('mineflayer-pathfinder')
+const { pathfinder, Movements } = require('mineflayer-pathfinder')
+const JobManager = require('./src/db')
+const ExecutionEngine = require('./src/executionEngine')
+const { registerCommands } = require('./src/commands')
 
 // ---- CONFIG ----
 const HOST = 'localhost'
@@ -13,7 +17,12 @@ const WHITELIST = new Set([
   'SlayerL99' // <-- fill in your real in-game name
 ])
 
-const COMMAND_PREFIX = '!bot'
+// Admins: subset of WHITELIST allowed to cancel others' jobs and !bot stop
+const ADMINS = new Set([
+  'SlayerL99'
+])
+
+const DB_PATH = path.join(__dirname, 'jobs.db')
 
 // ---- DEBUG LOGGING ----
 // Set to true to see every packet in/out, plus keepalive timing.
@@ -42,6 +51,46 @@ function createBot() {
   })
 
   bot.loadPlugin(pathfinder)
+
+  const jobManager = new JobManager(DB_PATH)
+  const executionEngine = new ExecutionEngine(bot, jobManager)
+
+  // Shared with commands.js: which job is currently running (for `!bot
+  // status` with no id, and as the target of `!bot stop`), and whether a
+  // stop has been requested for it.
+  //
+  // ponytail: stopRequested is plumbed through but ExecutionEngine.runJob
+  // never reads it — see the flatten-bot task-4 report for why this is a
+  // known gap rather than a silent workaround in executionEngine.js.
+  const jobState = { currentJobId: null, stopRequested: false }
+
+  let processing = false
+
+  // Pops and runs queued jobs one at a time (FIFO) until the queue is empty.
+  // No-ops if a drain is already in flight, so it's safe to call from every
+  // command that might need to kick a stalled queue.
+  async function startProcessing() {
+    if (processing) return
+    processing = true
+    try {
+      let job = jobManager.getNextQueuedJob()
+      while (job) {
+        jobManager.markRunning(job.id)
+        jobState.currentJobId = job.id
+        jobState.stopRequested = false
+        try {
+          await executionEngine.runJob(job.id)
+        } catch (err) {
+          console.error(`[bot] job ${job.id} crashed:`, err)
+          jobManager.markJobStatus(job.id, 'failed')
+        }
+        jobState.currentJobId = null
+        job = jobManager.getNextQueuedJob()
+      }
+    } finally {
+      processing = false
+    }
+  }
 
   if (DEBUG_PACKETS) {
     // Log every raw packet the client receives, with a running "time since
@@ -99,44 +148,25 @@ function createBot() {
     console.log('[bot] spawned in world')
     const defaultMove = new Movements(bot)
     bot.pathfinder.setMovements(defaultMove)
-    bot.chat('Spike bot online.')
+    bot.chat('Flatten bot online.')
+
+    // Crash-resume: anything left 'running' from an unclean shutdown gets
+    // requeued before the drain loop starts.
+    const interrupted = jobManager.getInterruptedJobs()
+    for (const job of interrupted) {
+      console.log(`[bot] requeuing interrupted job #${job.id}`)
+      jobManager.markJobStatus(job.id, 'queued')
+    }
+
+    startProcessing().catch((err) => console.error('[bot] job processing error:', err))
   })
 
-  bot.on('chat', (username, message) => {
-    if (username === bot.username) return // ignore self
-
-    if (!message.startsWith(COMMAND_PREFIX)) return
-
-    if (!WHITELIST.has(username)) {
-      bot.chat(`Sorry ${username}, you're not whitelisted for bot commands.`)
-      console.log(`[bot] rejected command from non-whitelisted user: ${username}`)
-      return
-    }
-
-    const args = message.slice(COMMAND_PREFIX.length).trim().split(/\s+/)
-    const cmd = args.shift()
-
-    console.log(`[bot] command from ${username}: ${cmd} ${args.join(' ')}`)
-
-    try {
-      switch (cmd) {
-        case 'goto':
-          handleGoto(bot, args)
-          break
-        case 'flatten':
-          handleFlatten(bot, args)
-          break
-        case 'stop':
-          bot.pathfinder.setGoal(null)
-          bot.chat('Stopped.')
-          break
-        default:
-          bot.chat(`Unknown command: ${cmd}. Try: goto, flatten, stop`)
-      }
-    } catch (err) {
-      console.error('[bot] command error:', err)
-      bot.chat(`Error running command: ${err.message}`)
-    }
+  registerCommands(bot, {
+    jobManager,
+    whitelist: WHITELIST,
+    admins: ADMINS,
+    startProcessing,
+    jobState
   })
 
   bot.on('kicked', (reason) => console.log('[bot] kicked:', reason))
@@ -152,100 +182,12 @@ function createBot() {
   })
   bot.on('end', (reason) => {
     console.log('[bot] disconnected, reason:', reason)
+    jobManager.close()
     console.log('[bot] reconnecting in 5s...')
     setTimeout(createBot, 5000)
   })
 
   return bot
-}
-
-function handleGoto(bot, args) {
-  if (args.length !== 3) {
-    bot.chat('Usage: !bot goto <x> <y> <z>')
-    return
-  }
-  const [x, y, z] = args.map(Number)
-  if ([x, y, z].some(Number.isNaN)) {
-    bot.chat('Coordinates must be numbers.')
-    return
-  }
-  bot.chat(`Heading to ${x}, ${y}, ${z}...`)
-  const goal = new goals.GoalBlock(x, y, z)
-  bot.pathfinder.setGoal(goal)
-}
-
-// Naive flatten: single target Y level across a rectangle.
-// Breaks anything above targetY, fills anything below it with a placeholder block
-// (dirt, for the spike — inventory-aware block selection comes later).
-async function handleFlatten(bot, args) {
-  if (args.length !== 5) {
-    bot.chat('Usage: !bot flatten <x1> <z1> <x2> <z2> <targetY>')
-    return
-  }
-  const [x1, z1, x2, z2, targetY] = args.map(Number)
-  if ([x1, z1, x2, z2, targetY].some(Number.isNaN)) {
-    bot.chat('All arguments must be numbers.')
-    return
-  }
-
-  const minX = Math.min(x1, x2)
-  const maxX = Math.max(x1, x2)
-  const minZ = Math.min(z1, z2)
-  const maxZ = Math.max(z1, z2)
-
-  const totalColumns = (maxX - minX + 1) * (maxZ - minZ + 1)
-  bot.chat(`Flattening ${totalColumns} columns to Y=${targetY}. This is a naive spike implementation — expect it to be slow.`)
-
-  let done = 0
-
-  for (let x = minX; x <= maxX; x++) {
-    for (let z = minZ; z <= maxZ; z++) {
-      await flattenColumn(bot, x, z, targetY)
-      done++
-      if (done % 10 === 0) {
-        bot.chat(`Progress: ${done}/${totalColumns} columns`)
-      }
-    }
-  }
-
-  bot.chat('Flatten complete.')
-}
-
-async function flattenColumn(bot, x, z, targetY) {
-  // Walk to the column first
-  const goal = new goals.GoalNear(x, targetY + 1, z, 2)
-  bot.pathfinder.setGoal(goal)
-  await waitForGoalReached(bot)
-
-  // Break blocks above targetY down to targetY+1 (leave targetY as the walkable surface)
-  // Scan a modest range above; adjust for your terrain's max height as needed.
-  for (let y = targetY + 10; y > targetY; y--) {
-    const block = bot.blockAt({ x, y, z })
-    if (block && block.name !== 'air') {
-      try {
-        await bot.dig(block)
-      } catch (err) {
-        console.log(`[bot] couldn't dig at ${x},${y},${z}: ${err.message}`)
-      }
-    }
-  }
-
-  // NOTE: filling below targetY with a placeholder block is intentionally
-  // omitted from this spike — needs inventory-aware block selection first.
-  // This spike only proves the break/traverse loop.
-}
-
-function waitForGoalReached(bot) {
-  return new Promise((resolve) => {
-    const check = () => {
-      if (!bot.pathfinder.isMoving()) {
-        resolve()
-      } else {
-        setTimeout(check, 200)
-      }
-    }
-    check()
-  })
 }
 
 createBot()
