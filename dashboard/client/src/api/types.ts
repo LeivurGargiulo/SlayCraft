@@ -49,7 +49,7 @@ export interface FarmSummary {
   entityCount: number;
   storageItemCount: number;
   chunkLoaded: boolean;
-  fakePlayerOnline: boolean;
+  occupantCount: number;
   metadata: { notes: string | null; tags: string[]; coordinates: string | null; expected_rates: Record<string, number> };
   images: FarmImage[];
 }
@@ -64,7 +64,7 @@ export interface FarmImage {
 
 export interface FarmDetail extends FarmSummary {
   anchor: { x: number; y: number; z: number };
-  fakePlayer: { name: string; online: boolean; position: { x: number; y: number; z: number } } | null;
+  occupants: Array<{ name: string; isFakePlayer: boolean; position: { x: number; y: number; z: number } }>;
   entities: Array<{ id: string; type: string; customName: string | null; position: { x: number; y: number; z: number }; health: number }>;
   storage: Array<{ id: string; label: string; position: { x: number; y: number; z: number }; capacity: number; items: Array<{ itemId: string; count: number }> }>;
 }

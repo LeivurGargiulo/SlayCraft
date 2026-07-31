@@ -18,7 +18,7 @@ export default function Granjas() {
             <Card className="hover:border-gold">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{f.name}</span>
-                <StatusBadge status={f.fakePlayerOnline ? 'online' : 'offline'} />
+                <StatusBadge status={f.occupantCount > 0 ? 'online' : 'offline'} />
               </div>
               <div className="mt-2 font-mono text-sm text-slate-400">
                 {f.entityCount} entidades · {f.storageItemCount} ítems almacenados

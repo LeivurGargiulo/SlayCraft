@@ -158,13 +158,17 @@ export default function GranjaDetail() {
         </Card>
 
         <Card>
-          <h2 className="mb-2 font-mono text-slate-200">Trabajador</h2>
-          {f.fakePlayer ? (
-            <p className="text-sm">
-              {f.fakePlayer.name} — {f.fakePlayer.online ? 'en línea' : 'fuera de línea'}
-            </p>
+          <h2 className="mb-2 font-mono text-slate-200">Ocupantes</h2>
+          {f.occupants.length > 0 ? (
+            <div className="space-y-1">
+              {f.occupants.map((o) => (
+                <p key={o.name} className="text-sm">
+                  {o.name} {o.isFakePlayer ? '(bot)' : ''}
+                </p>
+              ))}
+            </div>
           ) : (
-            <p className="text-sm text-slate-500">Sin trabajador asignado.</p>
+            <p className="text-sm text-slate-500">Sin ocupantes en el punto de AFK.</p>
           )}
         </Card>
 
