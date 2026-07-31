@@ -15,7 +15,13 @@ export function registerAuthRoutes(app: FastifyInstance, db: Database.Database) 
       return reply.code(401).send({ error: 'Contraseña incorrecta' });
     }
     const token = createSession();
-    reply.setCookie('session', token, { httpOnly: true, sameSite: 'lax', path: '/', signed: true });
+    reply.setCookie('session', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      signed: true,
+      secure: process.env.NODE_ENV === 'production',
+    });
     return { ok: true };
   });
 

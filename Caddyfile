@@ -1,0 +1,3 @@
+nyttlandmc.net.ar {
+	reverse_proxy client:80
+}

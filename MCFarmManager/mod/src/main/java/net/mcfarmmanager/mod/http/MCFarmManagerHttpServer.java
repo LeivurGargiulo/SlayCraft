@@ -141,7 +141,12 @@ public final class MCFarmManagerHttpServer {
             return false;
         }
         String provided = exchange.getRequestHeaders().getFirst("X-API-Token");
-        return expected.equals(provided);
+        if (provided == null) {
+            return false;
+        }
+        byte[] expectedBytes = expected.getBytes(StandardCharsets.UTF_8);
+        byte[] providedBytes = provided.getBytes(StandardCharsets.UTF_8);
+        return java.security.MessageDigest.isEqual(expectedBytes, providedBytes);
     }
 
     public void stop() {

@@ -16,6 +16,9 @@ import { registerGalleryRoutes } from './routes/gallery.js';
 export function buildApp(db: Database.Database, uploadsDir: string) {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
   const cookieSecret = process.env.COOKIE_SECRET ?? 'dev-secret-change-me';
+  if (process.env.NODE_ENV === 'production' && !process.env.COOKIE_SECRET) {
+    throw new Error('COOKIE_SECRET must be set in production');
+  }
 
   app.register(cookie, { secret: cookieSecret });
   app.register(multipart, { limits: { fileSize: 15 * 1024 * 1024 } });
@@ -33,7 +36,8 @@ export function buildApp(db: Database.Database, uploadsDir: string) {
   });
 
   app.addHook('preHandler', async (req, reply) => {
-    if (!req.url.startsWith('/api/') || req.url === '/api/login') return;
+    const isProtected = req.url.startsWith('/api/') || req.url.startsWith('/uploads/');
+    if (!isProtected || req.url === '/api/login') return;
     const raw = req.cookies.session;
     const unsigned = raw ? app.unsignCookie(raw) : null;
     if (!unsigned?.valid || !isValidSession(unsigned.value ?? undefined)) {
