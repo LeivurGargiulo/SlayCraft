@@ -62,11 +62,17 @@ export interface FarmImage {
   sort_order: number;
 }
 
+export interface StorageItem {
+  itemId: string;
+  count: number;
+  shulkerContents: StorageItem[] | null;
+}
+
 export interface FarmDetail extends FarmSummary {
   anchor: { x: number; y: number; z: number };
   occupants: Array<{ name: string; isFakePlayer: boolean; position: { x: number; y: number; z: number } }>;
   entities: Array<{ id: string; type: string; customName: string | null; position: { x: number; y: number; z: number }; health: number }>;
-  storage: Array<{ id: string; label: string; position: { x: number; y: number; z: number }; capacity: number; items: Array<{ itemId: string; count: number }> }>;
+  storage: Array<{ id: string; label: string; position: { x: number; y: number; z: number }; capacity: number; items: StorageItem[] }>;
 }
 
 export interface FarmHistorySample {

@@ -2,6 +2,15 @@ import { useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useFarm, useFarmHistory, useUpdateFarmMetadata, useUploadFarmImage, useDeleteFarmImage } from '../api/hooks';
 import Card from '../components/Card';
+import type { StorageItem } from '../api/types';
+
+// A filled shulker box represents its contents, not an item of its own; an empty box still counts as one shulker_box.
+function selfAndContents(item: StorageItem): { itemId: string; count: number }[] {
+  if (item.shulkerContents && item.shulkerContents.length > 0) {
+    return item.shulkerContents.flatMap(selfAndContents);
+  }
+  return [{ itemId: item.itemId, count: item.count }];
+}
 
 function computeRates(samples: { sampledAt: string; storageCounts: Record<string, number> }[]) {
   if (samples.length < 2) return {};
@@ -198,7 +207,7 @@ export default function GranjaDetail() {
       <Card>
         <h2 className="mb-2 font-mono text-slate-200">Almacenamiento</h2>
         {(() => {
-          const allItems = f.storage.flatMap((s) => s.items);
+          const allItems = f.storage.flatMap((s) => s.items.flatMap(selfAndContents));
           const total = allItems.reduce((sum, i) => sum + i.count, 0);
           const byType = allItems.reduce<Record<string, number>>((acc, i) => {
             const type = i.itemId.replace(/^minecraft:/, '');

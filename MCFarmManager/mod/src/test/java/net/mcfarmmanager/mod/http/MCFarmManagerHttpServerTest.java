@@ -52,8 +52,8 @@ class MCFarmManagerHttpServerTest {
         assertEquals(200, response.statusCode());
         assertTrue(response.body().contains("\"id\":\"iron\""));
         assertTrue(response.body().contains("\"entityCount\":1"));
-        // 1728 loose ingots + the shulker box itself + its 1000 nested ingots
-        assertTrue(response.body().contains("\"storageItemCount\":2729"));
+        // 1728 loose ingots + 1000 ingots inside the filled shulker box (the box itself isn't counted as an item)
+        assertTrue(response.body().contains("\"storageItemCount\":2728"));
     }
 
     @Test
