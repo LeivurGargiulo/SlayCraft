@@ -131,8 +131,19 @@ export function useFarmHistory(id: string, range: string) {
 export function useUpdateFarmMetadata() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, notes, tags, coordinates }: { id: string; notes?: string | null; tags?: string[]; coordinates?: string | null }) =>
-      apiFetch(`/farms/${id}/metadata`, { method: 'PATCH', body: JSON.stringify({ notes, tags, coordinates }) }),
+    mutationFn: ({
+      id,
+      notes,
+      tags,
+      coordinates,
+      expected_rates,
+    }: {
+      id: string;
+      notes?: string | null;
+      tags?: string[];
+      coordinates?: string | null;
+      expected_rates?: Record<string, number>;
+    }) => apiFetch(`/farms/${id}/metadata`, { method: 'PATCH', body: JSON.stringify({ notes, tags, coordinates, expected_rates }) }),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['farms'] });
       qc.invalidateQueries({ queryKey: ['farms', vars.id] });
