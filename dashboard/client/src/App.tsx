@@ -10,6 +10,7 @@ import Jugadores from './pages/Jugadores';
 import Proyectos from './pages/Proyectos';
 import ProyectoDetail from './pages/ProyectoDetail';
 import Galeria from './pages/Galeria';
+import Mapa from './pages/Mapa';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/proyectos" element={<Proyectos />} />
           <Route path="/proyectos/:id" element={<ProyectoDetail />} />
           <Route path="/galeria" element={<Galeria />} />
+          <Route path="/mapa" element={<Mapa />} />
         </Route>
       </Route>
     </Routes>

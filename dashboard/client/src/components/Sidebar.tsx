@@ -8,6 +8,7 @@ const links = [
   { to: '/jugadores', label: 'Jugadores' },
   { to: '/proyectos', label: 'Proyectos' },
   { to: '/galeria', label: 'Galería' },
+  { to: '/mapa', label: 'Mapa' },
 ];
 
 export default function Sidebar() {
