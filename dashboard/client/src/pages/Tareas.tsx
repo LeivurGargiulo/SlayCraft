@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   useTasks, useCreateTask, useUpdateTask, useDeleteTask,
-  useAddSubtask, useUpdateSubtask, usePlayers,
+  useAddSubtask, useUpdateSubtask, usePlayers, useFarms, useProjects,
 } from '../api/hooks';
 import type { Task, TaskPriority, TaskStatus } from '../api/types';
 import Card from '../components/Card';
@@ -16,6 +16,8 @@ const STATUS_LABEL: Record<TaskStatus, string> = { todo: 'Pendiente', in_progres
 export default function Tareas() {
   const tasks = useTasks();
   const players = usePlayers();
+  const farms = useFarms();
+  const projects = useProjects();
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
@@ -25,6 +27,10 @@ export default function Tareas() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
+  const [assigneeFilter, setAssigneeFilter] = useState<number | 'all'>('all');
+  const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
+  const [farmFilter, setFarmFilter] = useState<string | 'all'>('all');
+  const [projectFilter, setProjectFilter] = useState<number | 'all'>('all');
 
   const [form, setForm] = useState({ title: '', description: '', priority: 'med' as TaskPriority, due_date: '', assignee_ids: [] as number[] });
 
@@ -59,7 +65,14 @@ export default function Tareas() {
     setModalOpen(false);
   }
 
-  const visible = (tasks.data?.tasks ?? []).filter((t) => statusFilter === 'all' || t.status === statusFilter);
+  const visible = (tasks.data?.tasks ?? []).filter((t) => {
+    if (statusFilter !== 'all' && t.status !== statusFilter) return false;
+    if (assigneeFilter !== 'all' && !t.assignees.some((a) => a.id === assigneeFilter)) return false;
+    if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false;
+    if (farmFilter !== 'all' && t.farm_id !== farmFilter) return false;
+    if (projectFilter !== 'all' && t.project_id !== projectFilter) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-4">
@@ -86,6 +99,57 @@ export default function Tareas() {
             <StatusBadge status={s} />
           </button>
         ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <select
+          value={assigneeFilter}
+          onChange={(e) => setAssigneeFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+          className="rounded border border-border bg-base px-2 py-1 text-sm"
+        >
+          <option value="all">Todos los jugadores</option>
+          {(players.data?.players ?? []).map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.minecraft_name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value as TaskPriority | 'all')}
+          className="rounded border border-border bg-base px-2 py-1 text-sm"
+        >
+          <option value="all">Toda prioridad</option>
+          {Object.entries(PRIORITY_LABEL).map(([v, label]) => (
+            <option key={v} value={v}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={farmFilter}
+          onChange={(e) => setFarmFilter(e.target.value)}
+          className="rounded border border-border bg-base px-2 py-1 text-sm"
+        >
+          <option value="all">Toda granja</option>
+          {(farms.data?.farms ?? []).map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={projectFilter}
+          onChange={(e) => setProjectFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+          className="rounded border border-border bg-base px-2 py-1 text-sm"
+        >
+          <option value="all">Todo proyecto</option>
+          {(projects.data?.projects ?? []).map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="space-y-2">
