@@ -12,13 +12,18 @@ interface FarmMetadataRow {
   farm_id: string;
   notes: string | null;
   tags: string | null;
+  coordinates: string | null;
 }
 
 function getMetadata(db: Database.Database, farmId: string) {
-  const row = db.prepare('SELECT notes, tags FROM farm_metadata WHERE farm_id = ?').get(farmId) as
+  const row = db.prepare('SELECT notes, tags, coordinates FROM farm_metadata WHERE farm_id = ?').get(farmId) as
     | FarmMetadataRow
     | undefined;
-  return { notes: row?.notes ?? null, tags: row?.tags ? row.tags.split(',').filter(Boolean) : [] };
+  return {
+    notes: row?.notes ?? null,
+    tags: row?.tags ? row.tags.split(',').filter(Boolean) : [],
+    coordinates: row?.coordinates ?? null,
+  };
 }
 
 function getImages(db: Database.Database, farmId: string) {
@@ -37,6 +42,7 @@ async function withMcfm<T>(reply: import('fastify').FastifyReply, fn: () => Prom
 const metadataSchema = z.object({
   notes: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
+  coordinates: z.string().nullable().optional(),
 });
 
 export function registerFarmRoutes(app: FastifyInstance, db: Database.Database, uploadsDir: string) {
@@ -65,9 +71,9 @@ export function registerFarmRoutes(app: FastifyInstance, db: Database.Database, 
     const { id } = req.params as { id: string };
     const body = metadataSchema.parse(req.body);
     db.prepare(
-      `INSERT INTO farm_metadata (farm_id, notes, tags) VALUES (?, ?, ?)
-       ON CONFLICT(farm_id) DO UPDATE SET notes = excluded.notes, tags = excluded.tags`
-    ).run(id, body.notes ?? null, body.tags ? body.tags.join(',') : null);
+      `INSERT INTO farm_metadata (farm_id, notes, tags, coordinates) VALUES (?, ?, ?, ?)
+       ON CONFLICT(farm_id) DO UPDATE SET notes = excluded.notes, tags = excluded.tags, coordinates = excluded.coordinates`
+    ).run(id, body.notes ?? null, body.tags ? body.tags.join(',') : null, body.coordinates ?? null);
     return { ok: true, metadata: getMetadata(db, id) };
   });
 

@@ -16,7 +16,7 @@ test('GET /api/farms merges MCFarmManager data with dashboard metadata', async (
   assert.equal(res.statusCode, 200);
   const body = res.json();
   assert.equal(body.farms[0].id, 'iron');
-  assert.deepEqual(body.farms[0].metadata, { notes: 'necesita mas cofres', tags: ['prioridad', 'hierro'] });
+  assert.deepEqual(body.farms[0].metadata, { notes: 'necesita mas cofres', tags: ['prioridad', 'hierro'], coordinates: null });
 });
 
 test('GET /api/farms returns 502 when MCFarmManager is unreachable', async (t) => {
@@ -31,19 +31,21 @@ test('GET /api/farms returns 502 when MCFarmManager is unreachable', async (t) =
   assert.equal(res.statusCode, 502);
 });
 
-test('PATCH /api/farms/:id/metadata upserts notes and tags', async () => {
+test('PATCH /api/farms/:id/metadata upserts notes, tags, and coordinates', async () => {
   const { app, db } = makeApp();
   const cookie = await loginAndGetCookie(app, db);
   const res = await app.inject({
     method: 'PATCH',
     url: '/api/farms/iron/metadata',
     headers: { cookie },
-    payload: { notes: 'ok', tags: ['a', 'b'] },
+    payload: { notes: 'ok', tags: ['a', 'b'], coordinates: '120, 80, -500' },
   });
   assert.equal(res.statusCode, 200);
+  assert.equal(res.json().metadata.coordinates, '120, 80, -500');
   const row = db.prepare('SELECT * FROM farm_metadata WHERE farm_id = ?').get('iron') as any;
   assert.equal(row.notes, 'ok');
   assert.equal(row.tags, 'a,b');
+  assert.equal(row.coordinates, '120, 80, -500');
 });
 
 test('farm image upload and delete', async (t) => {

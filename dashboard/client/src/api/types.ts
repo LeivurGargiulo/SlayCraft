@@ -50,7 +50,7 @@ export interface FarmSummary {
   storageItemCount: number;
   chunkLoaded: boolean;
   fakePlayerOnline: boolean;
-  metadata: { notes: string | null; tags: string[] };
+  metadata: { notes: string | null; tags: string[]; coordinates: string | null };
   images: FarmImage[];
 }
 

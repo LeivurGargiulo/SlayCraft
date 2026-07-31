@@ -15,5 +15,9 @@ export function openDb(dbPath: string): Database.Database {
   if (!projectColumns.some((c) => c.name === 'coordinates')) {
     db.exec('ALTER TABLE projects ADD COLUMN coordinates TEXT');
   }
+  const farmMetadataColumns = db.prepare('PRAGMA table_info(farm_metadata)').all() as Array<{ name: string }>;
+  if (!farmMetadataColumns.some((c) => c.name === 'coordinates')) {
+    db.exec('ALTER TABLE farm_metadata ADD COLUMN coordinates TEXT');
+  }
   return db;
 }

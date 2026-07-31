@@ -13,6 +13,7 @@ export default function GranjaDetail() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [notes, setNotes] = useState('');
   const [tags, setTags] = useState('');
+  const [coordinates, setCoordinates] = useState('');
   const [editingMeta, setEditingMeta] = useState(false);
 
   if (farm.isLoading) return <p className="text-slate-400">Cargando…</p>;
@@ -22,6 +23,7 @@ export default function GranjaDetail() {
   function startEdit() {
     setNotes(f.metadata.notes ?? '');
     setTags(f.metadata.tags.join(', '));
+    setCoordinates(f.metadata.coordinates ?? '');
     setEditingMeta(true);
   }
 
@@ -30,6 +32,7 @@ export default function GranjaDetail() {
       id: f.id,
       notes: notes || null,
       tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
+      coordinates: coordinates || null,
     });
     setEditingMeta(false);
   }
@@ -59,6 +62,12 @@ export default function GranjaDetail() {
                 placeholder="etiquetas separadas por coma"
                 className="w-full rounded border border-border bg-base px-2 py-1"
               />
+              <input
+                value={coordinates}
+                onChange={(e) => setCoordinates(e.target.value)}
+                placeholder="Coordenadas (ej. 120, 80, -500)"
+                className="w-full rounded border border-border bg-base px-2 py-1"
+              />
               <button onClick={saveMeta} className="rounded bg-gold px-3 py-1 text-sm text-base">
                 Guardar
               </button>
@@ -69,6 +78,7 @@ export default function GranjaDetail() {
           ) : (
             <div>
               <p className="text-sm text-slate-300">{f.metadata.notes || 'Sin notas.'}</p>
+              {f.metadata.coordinates && <p className="mt-1 font-mono text-sm text-slate-400">{f.metadata.coordinates}</p>}
               <button onClick={startEdit} className="mt-2 text-sm text-cyan hover:underline">
                 Editar
               </button>
