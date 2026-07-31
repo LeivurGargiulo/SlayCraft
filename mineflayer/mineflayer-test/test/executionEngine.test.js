@@ -25,11 +25,18 @@ function createTestDb() {
 function createFakeBot(blockMap, initialInventory = {}) {
   const key = (pos) => `${pos.x},${pos.y},${pos.z}`;
   const equipCalls = [];
+  const gotoCalls = [];
   const counts = new Map(Object.entries(initialInventory));
   let equipped = null;
 
   const bot = {
     equipCalls,
+    gotoCalls,
+    world: {
+      getBlock(pos) {
+        return blockMap[key(pos)] ?? null;
+      },
+    },
     inventory: {
       items() {
         return [...counts]
@@ -63,11 +70,13 @@ function createFakeBot(blockMap, initialInventory = {}) {
         y: referenceBlock.position.y + faceVector.y,
         z: referenceBlock.position.z + faceVector.z,
       };
-      blockMap[key(pos)] = { type: 1, name: equipped.name, position: pos };
+      blockMap[key(pos)] = { type: 1, name: equipped.name, position: pos, shapes: [[0, 0, 0, 1, 1, 1]] };
       counts.set(equipped.name, counts.get(equipped.name) - 1);
     },
     pathfinder: {
-      async goto() {},
+      async goto(goal) {
+        gotoCalls.push(goal);
+      },
     },
     chat() {},
     // Minimal stand-in for prismarine-registry's blocksByName: only names
@@ -83,7 +92,10 @@ function createFakeBot(blockMap, initialInventory = {}) {
 // Helper: wrap a plain {type, name} into a block with .position, matching what
 // bot.blockAt would normally return.
 function setBlock(blockMap, pos, type, name) {
-  blockMap[`${pos.x},${pos.y},${pos.z}`] = { type, name, position: pos };
+  // shapes: a full-cube AABB, matching prismarine-block's shape for a solid
+  // block - GoalPlaceBlock's constructor (goals.js) needs this to compute
+  // which faces are placeable against.
+  blockMap[`${pos.x},${pos.y},${pos.z}`] = { type, name, position: pos, shapes: [[0, 0, 0, 1, 1, 1]] };
 }
 
 test('full run: even break/place balance completes the job', async () => {
@@ -239,6 +251,29 @@ test('place skips a non-block tool in inventory and equips the actual block inst
   assert.strictEqual(status.status, 'completed', 'the place must succeed by skipping the tool and using the real block');
   assert.strictEqual(bot.equipCalls.length, 1);
   assert.strictEqual(bot.equipCalls[0].item.name, 'dirt', 'must equip dirt, never the shovel');
+
+  db.close();
+});
+
+test('place walks to a GoalPlaceBlock, never a bare GoalNear that lets the bot stand in the target cell', async () => {
+  const { goals } = require('mineflayer-pathfinder');
+  const db = createTestDb();
+  const blockMap = {};
+  setBlock(blockMap, { x: 0, y: 63, z: 0 }, 1, 'stone');
+
+  const jobId = db.enqueue('flatten', 'player1', '{}', [
+    { action: 'place', x: 0, y: 64, z: 0 },
+  ]);
+
+  const bot = createFakeBot(blockMap, { dirt: 1 });
+  const engine = new ExecutionEngine(bot, db);
+  await engine.runJob(jobId);
+
+  assert.strictEqual(bot.gotoCalls.length, 1);
+  assert.ok(
+    bot.gotoCalls[0] instanceof goals.GoalPlaceBlock,
+    'a place action must walk to a GoalPlaceBlock, which refuses to end inside the target cell - a bare GoalNear(pos, 1) is satisfied by standing directly on the block being placed, which the server silently rejects'
+  );
 
   db.close();
 });

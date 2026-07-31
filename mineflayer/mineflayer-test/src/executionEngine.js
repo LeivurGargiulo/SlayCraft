@@ -153,7 +153,13 @@ class ExecutionEngine {
       if (!reference) {
         throw new Error(`no solid neighbor block to place against at ${pos.x},${pos.y},${pos.z}`);
       }
-      await this._gotoWithTimeout(new goals.GoalNear(pos.x, pos.y, pos.z, 1));
+      // GoalNear(pos, 1) is satisfied by standing directly on the target
+      // cell itself (distance 0), which a real server silently rejects a
+      // placement into - the placeBlock call then hangs waiting for a
+      // blockUpdate that never fires. GoalPlaceBlock explicitly refuses to
+      // end inside the target cell (its isStandingIn check), so the bot
+      // always approaches from a neighboring block instead.
+      await this._gotoWithTimeout(new goals.GoalPlaceBlock(pos, this.bot.world, {}));
       await this.bot.equip(item, 'hand');
       await this.bot.placeBlock(reference.referenceBlock, reference.faceVector);
       this.jobManager.markActionDone(jobId, row.seq);
