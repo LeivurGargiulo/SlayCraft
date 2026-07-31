@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { usePlayers, useCreatePlayer, useUpdatePlayer, useDeletePlayer, useLivePlayers } from '../api/hooks';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
+import PlayerSkin from '../components/PlayerSkin';
 
 export default function Jugadores() {
   const players = usePlayers();
@@ -52,19 +52,20 @@ export default function Jugadores() {
       <div className="space-y-2">
         {(players.data?.players ?? []).map((p) => (
           <Card key={p.id} className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 font-medium">
-                <Link to={`/jugadores/${p.id}`} className="text-cyan hover:underline">
+            <div className="flex items-center gap-3">
+              <PlayerSkin name={p.minecraft_name} />
+              <div>
+                <div className="flex items-center gap-2 font-medium">
                   {p.minecraft_name}
-                </Link>
-                <StatusBadge status={liveNames.has(p.minecraft_name) ? 'online' : 'offline'} />
+                  <StatusBadge status={liveNames.has(p.minecraft_name) ? 'online' : 'offline'} />
+                </div>
+                <input
+                  defaultValue={p.note ?? ''}
+                  onBlur={(e) => updatePlayer.mutate({ id: p.id, note: e.target.value || null })}
+                  placeholder="Nota"
+                  className="mt-1 rounded border border-border bg-base px-2 py-1 text-sm"
+                />
               </div>
-              <input
-                defaultValue={p.note ?? ''}
-                onBlur={(e) => updatePlayer.mutate({ id: p.id, note: e.target.value || null })}
-                placeholder="Nota"
-                className="mt-1 rounded border border-border bg-base px-2 py-1 text-sm"
-              />
             </div>
             <button
               onClick={() => {
