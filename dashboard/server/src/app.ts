@@ -42,7 +42,7 @@ export function buildApp(db: Database.Database, uploadsDir: string) {
   });
 
   registerAuthRoutes(app, db);
-  registerFarmRoutes(app, db);
+  registerFarmRoutes(app, db, uploadsDir);
   registerMiscRoutes(app);
   registerTaskRoutes(app, db);
   registerPlayerRoutes(app, db);
