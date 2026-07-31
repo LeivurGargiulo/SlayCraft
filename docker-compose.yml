@@ -1,0 +1,36 @@
+services:
+  mcserver:
+    build: ./servers/fabric
+    hostname: mcserver
+    volumes:
+      - ./servers/fabric:/server
+    ports:
+      - "25564:25564"
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  server:
+    build: ./dashboard/server
+    environment:
+      PORT: 3001
+      MCFARMMANAGER_URL: ${MCFARMMANAGER_URL:-http://mcserver:8642}
+      COOKIE_SECRET: ${COOKIE_SECRET:?set COOKIE_SECRET in .env}
+      DASHBOARD_DATA_DIR: /data
+    volumes:
+      - dashboard-data:/data
+    depends_on:
+      - mcserver
+    restart: unless-stopped
+
+  client:
+    build: ./dashboard/client
+    ports:
+      - "${DASHBOARD_PORT:-8080}:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  dashboard-data:
+    name: dashboard_dashboard-data
