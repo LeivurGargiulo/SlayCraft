@@ -30,11 +30,6 @@ for the full reasoning behind the sensing-runtime decision that drove most of th
 - **`slaycraft/`** — the live-at-the-time public site. Archived once the new dashboard
   replaces it, so there's no ambiguity about which site is real going forward.
 
-- **`flattennermcbot/`** — mineflayer-based flatten/schematic builder bot. Out of scope
-  for this session, permanently for now, per explicit instruction. A complete, reasonable
-  plan and working spike — frozen, not rejected. Nothing in this session's work assumes
-  it exists.
-
 - **`servers-vanilla/`** — a second, effectively-empty server directory (0 mods, stale
   log) found alongside the real, live `servers/fabric` (66 mods, MCFarmManager +
   registry-compat deployed, active log). Confirmed with Lei that `servers/fabric` is the
