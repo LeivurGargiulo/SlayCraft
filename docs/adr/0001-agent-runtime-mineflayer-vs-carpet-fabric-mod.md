@@ -1,19 +1,14 @@
 # ADR-0001: Agent runtime — Mineflayer vs. Carpet/Automatone Fabric mod
 
-**Status:** Superseded by [ADR-0002](./0002-agent-runtime-automatone-spike.md) (2026-07-31)
+**Status:** Accepted (reaffirmed 2026-07-31 — see [ADR-0002](./0002-agent-runtime-automatone-spike.md) Spike Results)
 **Date:** 2026-07-31
 **Deciders:** Lei (project owner)
 
-> **Superseded:** written before Lei clarified that real-time/realistic behavior is a
-> priority requirement, and before MCFarmManager was checked directly as precedent (it
-> proves live-verified Fabric+Carpet toolchain familiarity, undercutting this ADR's "low
-> team familiarity, high cost" argument against Option B — but it is read-only and never
-> touches Automatone or entity control, so it's not evidence either way on the actually
-> hard part of Option B). ADR-0002 records a timeboxed spike to resolve the real
-> uncertainty (Automatone's compatibility with this server's exact MC 1.21.11 / Fabric
-> 0.19.3 stack, and whether it can drive believable real-time block-breaking/placing)
-> before committing the full agent build to either runtime. Kept below for historical
-> context only.
+> **Reaffirmed:** briefly superseded by ADR-0002 pending a timeboxed Automatone spike.
+> The spike failed at its version-compatibility gate (Automatone's newest code targets MC
+> 1.20; this server targets 1.21.11 / Fabric loader 0.19.3 — three-plus major versions of
+> mapping churn, not a 2-day port) — see ADR-0002's Spike Results section. Option A
+> (Mineflayer) below is reinstated as the decision, in full force again.
 
 ## Context
 

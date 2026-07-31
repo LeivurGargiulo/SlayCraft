@@ -1,9 +1,9 @@
 # ADR-0002: Agent runtime — reopen for real-time/realism priority, spike Automatone before committing
 
-**Status:** Accepted
+**Status:** Resolved — spike failed, ADR-0001 reaffirmed (2026-07-31)
 **Date:** 2026-07-31
 **Deciders:** Lei (project owner)
-**Supersedes:** [ADR-0001](./0001-agent-runtime-mineflayer-vs-carpet-fabric-mod.md)
+**Supersedes:** [ADR-0001](./0001-agent-runtime-mineflayer-vs-carpet-fabric-mod.md) (temporarily — see Spike Results, ADR-0001 reinstated)
 
 ## Context
 
@@ -130,17 +130,35 @@ Anything more is scope creep that defeats the point of timeboxing.
 
 ## Action Items
 
-1. [ ] Check Automatone's actual releases/branches for MC 1.21.11 / Fabric loader 0.19.3
-   compatibility. Stop and report fail if none exists (Step 1 above).
-2. [ ] If compatible, scaffold the spike mod from MCFarmManager's Gradle template.
-3. [ ] Spawn a Carpet fake player, attach Automatone, confirm the integration point.
-4. [ ] Run one break-then-place cycle, measure latency, observe realism from a second
-   client.
-5. [ ] Append a "Spike Results" section to this ADR with pass/fail and the next action
-   (ADR-0003 for Option B, or resume the existing Mineflayer plan for Option A).
-6. [ ] Timebox is 2 working days — if inconclusive by then, default to Option A and write
-   up why, rather than extending the spike.
+1. [x] Check Automatone's actual releases/branches for MC 1.21.11 / Fabric loader 0.19.3
+   compatibility. Stop and report fail if none exists (Step 1 above). **FAILED — see Spike
+   Results.**
+2. [ ] ~~Scaffold the spike mod from MCFarmManager's Gradle template.~~ Not reached — Step 1
+   gate failed.
+3. [ ] ~~Spawn a Carpet fake player, attach Automatone, confirm the integration point.~~ Not
+   reached.
+4. [ ] ~~Run one break-then-place cycle, measure latency, observe realism from a second
+   client.~~ Not reached.
+5. [x] Appended "Spike Results" section to this ADR with pass/fail and the next action:
+   resume Mineflayer plan (Option A stands).
+6. [x] Timebox not needed — Step 1 gate failed same day, well within 2-day timebox.
 
 ## Spike Results
 
-_Not yet run._
+**Date:** 2026-07-31
+**Verdict: FAIL at Step 1 (version compatibility gate).** Spike stopped before scaffolding — steps 2-6 not run.
+
+### Step 1 findings
+
+Checked `Ladysnake/Automatone` directly via `gh api` (releases, branches, repo metadata), not a cached/webpage summary:
+
+- **Releases:** newest is `v0.11.0`, published 2024-01-21. No release newer than that exists.
+- **Branches:** `1.17`, `1.18`, `1.19`, `1.19.2`, `1.20`, `dev`, `feature/swimming`, `main`. No `1.21` branch of any kind.
+- **Repo activity:** `pushed_at: 2024-01-21T21:29:59Z`, not archived but dormant for ~2.5 years as of this spike.
+- **Target stack** (confirmed via `MCFarmManager/mod/gradle.properties`): `minecraft_version=1.21.11`, `loader_version=0.19.3`.
+
+Newest available Automatone code targets MC 1.20 — three-plus major Minecraft versions behind the 1.21.11 target, spanning the entire 1.21.x mapping-churn era (Yarn mappings, Fabric API, and Cardinal Components API all shifted substantially across 1.20 → 1.21.11). Porting Automatone from its 1.20 branch to 1.21.11 is not a same-day rebuild against a stable API — it requires re-deriving mappings, updating the Fabric API surface, verifying Cardinal Components compatibility, and revalidating its Baritone-fork internals, none of which can be scoped or attempted within the spike's 2-day timebox. Per the spike's own Step 1 rule ("if none exists and porting/building it from source against this version is itself a multi-day undertaking, stop here"), this is a hard fail.
+
+### Outcome
+
+**Confirm ADR-0001's Option A stands.** Resume `docs/superpowers/plans/2026-07-31-mineflayer-llm-agent.md` as already written — no changes needed there. Do not open ADR-0003; Option B (Automatone) is not viable against this server's actual version stack without an out-of-scope porting effort.
