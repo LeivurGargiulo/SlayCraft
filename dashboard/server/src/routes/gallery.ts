@@ -16,7 +16,10 @@ export function registerGalleryRoutes(app: FastifyInstance, db: Database.Databas
     const file = await req.file();
     if (!file) return reply.code(400).send({ error: 'Falta el archivo' });
     const ext = path.extname(file.filename).toLowerCase();
-    if (!ALLOWED_EXT.has(ext)) return reply.code(400).send({ error: 'Formato de imagen no permitido' });
+    if (!ALLOWED_EXT.has(ext)) {
+      await file.toBuffer();
+      return reply.code(400).send({ error: 'Formato de imagen no permitido' });
+    }
     const filename = `${crypto.randomUUID()}${ext}`;
     await fs.promises.writeFile(path.join(uploadsDir, filename), await file.toBuffer());
     const caption = (file.fields.caption as { value?: string } | undefined)?.value ?? null;
