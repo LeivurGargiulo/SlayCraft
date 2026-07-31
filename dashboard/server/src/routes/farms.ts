@@ -13,16 +13,18 @@ interface FarmMetadataRow {
   notes: string | null;
   tags: string | null;
   coordinates: string | null;
+  expected_rates: string | null;
 }
 
 function getMetadata(db: Database.Database, farmId: string) {
-  const row = db.prepare('SELECT notes, tags, coordinates FROM farm_metadata WHERE farm_id = ?').get(farmId) as
+  const row = db.prepare('SELECT notes, tags, coordinates, expected_rates FROM farm_metadata WHERE farm_id = ?').get(farmId) as
     | FarmMetadataRow
     | undefined;
   return {
     notes: row?.notes ?? null,
     tags: row?.tags ? row.tags.split(',').filter(Boolean) : [],
     coordinates: row?.coordinates ?? null,
+    expected_rates: row?.expected_rates ? JSON.parse(row.expected_rates) : {},
   };
 }
 
@@ -43,6 +45,7 @@ const metadataSchema = z.object({
   notes: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
   coordinates: z.string().nullable().optional(),
+  expected_rates: z.record(z.string(), z.number()).optional(),
 });
 
 export function registerFarmRoutes(app: FastifyInstance, db: Database.Database, uploadsDir: string) {
@@ -71,9 +74,15 @@ export function registerFarmRoutes(app: FastifyInstance, db: Database.Database, 
     const { id } = req.params as { id: string };
     const body = metadataSchema.parse(req.body);
     db.prepare(
-      `INSERT INTO farm_metadata (farm_id, notes, tags, coordinates) VALUES (?, ?, ?, ?)
-       ON CONFLICT(farm_id) DO UPDATE SET notes = excluded.notes, tags = excluded.tags, coordinates = excluded.coordinates`
-    ).run(id, body.notes ?? null, body.tags ? body.tags.join(',') : null, body.coordinates ?? null);
+      `INSERT INTO farm_metadata (farm_id, notes, tags, coordinates, expected_rates) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(farm_id) DO UPDATE SET notes = excluded.notes, tags = excluded.tags, coordinates = excluded.coordinates, expected_rates = excluded.expected_rates`
+    ).run(
+      id,
+      body.notes ?? null,
+      body.tags ? body.tags.join(',') : null,
+      body.coordinates ?? null,
+      body.expected_rates ? JSON.stringify(body.expected_rates) : null
+    );
     return { ok: true, metadata: getMetadata(db, id) };
   });
 

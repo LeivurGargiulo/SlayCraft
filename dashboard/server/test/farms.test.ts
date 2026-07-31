@@ -16,7 +16,7 @@ test('GET /api/farms merges MCFarmManager data with dashboard metadata', async (
   assert.equal(res.statusCode, 200);
   const body = res.json();
   assert.equal(body.farms[0].id, 'iron');
-  assert.deepEqual(body.farms[0].metadata, { notes: 'necesita mas cofres', tags: ['prioridad', 'hierro'], coordinates: null });
+  assert.deepEqual(body.farms[0].metadata, { notes: 'necesita mas cofres', tags: ['prioridad', 'hierro'], coordinates: null, expected_rates: {} });
 });
 
 test('GET /api/farms returns 502 when MCFarmManager is unreachable', async (t) => {
@@ -46,6 +46,34 @@ test('PATCH /api/farms/:id/metadata upserts notes, tags, and coordinates', async
   assert.equal(row.notes, 'ok');
   assert.equal(row.tags, 'a,b');
   assert.equal(row.coordinates, '120, 80, -500');
+});
+
+test('PATCH /api/farms/:id/metadata round-trips expected_rates', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  const res = await app.inject({
+    method: 'PATCH',
+    url: '/api/farms/iron/metadata',
+    headers: { cookie },
+    payload: { expected_rates: { iron_ingot: 120, gold_nugget: 40 } },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json().metadata.expected_rates, { iron_ingot: 120, gold_nugget: 40 });
+
+  const row = db.prepare('SELECT expected_rates FROM farm_metadata WHERE farm_id = ?').get('iron') as any;
+  assert.deepEqual(JSON.parse(row.expected_rates), { iron_ingot: 120, gold_nugget: 40 });
+});
+
+test('metadata expected_rates defaults to an empty object when unset', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  const res = await app.inject({
+    method: 'PATCH',
+    url: '/api/farms/iron/metadata',
+    headers: { cookie },
+    payload: { notes: 'sin tasas todavia' },
+  });
+  assert.deepEqual(res.json().metadata.expected_rates, {});
 });
 
 test('farm image upload and delete', async (t) => {
