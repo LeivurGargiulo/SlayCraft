@@ -14,11 +14,13 @@ export default function ProyectoDetail() {
 
   const project = projects.data?.projects.find((p) => p.id === Number(id));
   const [description, setDescription] = useState('');
+  const [coordinates, setCoordinates] = useState('');
 
   if (!project) return <p className="text-slate-400">Cargando…</p>;
 
   function startEdit() {
     setDescription(project!.description ?? '');
+    setCoordinates(project!.coordinates ?? '');
     setEditing(true);
   }
 
@@ -49,9 +51,15 @@ export default function ProyectoDetail() {
         {editing ? (
           <div className="space-y-2">
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded border border-border bg-base px-3 py-2" />
+            <input
+              value={coordinates}
+              onChange={(e) => setCoordinates(e.target.value)}
+              placeholder="Coordenadas (ej. 120, 80, -500)"
+              className="w-full rounded border border-border bg-base px-3 py-2"
+            />
             <button
               onClick={async () => {
-                await updateProject.mutateAsync({ id: project.id, description });
+                await updateProject.mutateAsync({ id: project.id, description, coordinates: coordinates || null });
                 setEditing(false);
               }}
               className="rounded bg-gold px-3 py-1 text-sm text-base"
@@ -65,6 +73,7 @@ export default function ProyectoDetail() {
         ) : (
           <div>
             <p className="text-sm text-slate-300">{project.description || 'Sin descripción todavía.'}</p>
+            {project.coordinates && <p className="mt-1 font-mono text-sm text-slate-400">{project.coordinates}</p>}
             <button onClick={startEdit} className="mt-2 text-sm text-cyan hover:underline">
               Editar descripción
             </button>

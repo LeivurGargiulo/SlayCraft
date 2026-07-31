@@ -183,7 +183,7 @@ export function useProjects() {
 export function useCreateProject() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { name: string; description?: string | null; status?: string }) =>
+    mutationFn: (input: { name: string; description?: string | null; status?: string; coordinates?: string | null }) =>
       apiFetch<Project>('/projects', { method: 'POST', body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
   });
@@ -191,7 +191,7 @@ export function useCreateProject() {
 export function useUpdateProject() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...input }: { id: number; name?: string; description?: string | null; status?: string }) =>
+    mutationFn: ({ id, ...input }: { id: number; name?: string; description?: string | null; status?: string; coordinates?: string | null }) =>
       apiFetch<Project>(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
   });
