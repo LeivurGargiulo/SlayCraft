@@ -11,6 +11,7 @@ const projectInput = z.object({
   name: z.string().min(1),
   description: z.string().nullable().optional(),
   status: z.string().min(1).default('active'),
+  coordinates: z.string().nullable().optional(),
 });
 
 interface ProjectRow {
@@ -18,6 +19,7 @@ interface ProjectRow {
   name: string;
   description: string | null;
   status: string;
+  coordinates: string | null;
   created_at: string;
 }
 
@@ -41,8 +43,8 @@ export function registerProjectRoutes(app: FastifyInstance, db: Database.Databas
   app.post('/api/projects', async (req, reply) => {
     const body = projectInput.parse(req.body);
     const info = db
-      .prepare('INSERT INTO projects (name, description, status) VALUES (?, ?, ?)')
-      .run(body.name, body.description ?? null, body.status);
+      .prepare('INSERT INTO projects (name, description, status, coordinates) VALUES (?, ?, ?, ?)')
+      .run(body.name, body.description ?? null, body.status, body.coordinates ?? null);
     reply.code(201);
     return { ...(db.prepare('SELECT * FROM projects WHERE id = ?').get(info.lastInsertRowid) as ProjectRow), images: [] };
   });
@@ -52,11 +54,12 @@ export function registerProjectRoutes(app: FastifyInstance, db: Database.Databas
     const existing = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as ProjectRow | undefined;
     if (!existing) return reply.code(404).send({ error: 'Proyecto no encontrado' });
     const body = projectInput.partial().parse(req.body);
-    db.prepare('UPDATE projects SET name=@name, description=@description, status=@status WHERE id=@id').run({
+    db.prepare('UPDATE projects SET name=@name, description=@description, status=@status, coordinates=@coordinates WHERE id=@id').run({
       id,
       name: body.name ?? existing.name,
       description: body.description !== undefined ? body.description : existing.description,
       status: body.status ?? existing.status,
+      coordinates: body.coordinates !== undefined ? body.coordinates : existing.coordinates,
     });
     return { ...(db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as ProjectRow), images: getImages(db, id) };
   });

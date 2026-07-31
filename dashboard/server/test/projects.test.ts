@@ -34,3 +34,26 @@ test('project CRUD and image upload', async () => {
   const get = await app.inject({ method: 'GET', url: `/api/projects/${project.id}`, headers: { cookie } });
   assert.equal(get.json().images.length, 1);
 });
+
+test('project coordinates can be set and updated', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+
+  const create = await app.inject({
+    method: 'POST',
+    url: '/api/projects',
+    headers: { cookie },
+    payload: { name: 'Torre del faro', coordinates: '100, 64, -200' },
+  });
+  assert.equal(create.statusCode, 201);
+  assert.equal(create.json().coordinates, '100, 64, -200');
+
+  const id = create.json().id;
+  const update = await app.inject({
+    method: 'PATCH',
+    url: `/api/projects/${id}`,
+    headers: { cookie },
+    payload: { coordinates: '150, 70, -210' },
+  });
+  assert.equal(update.json().coordinates, '150, 70, -210');
+});
