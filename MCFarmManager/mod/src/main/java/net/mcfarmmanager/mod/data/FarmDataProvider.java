@@ -7,5 +7,5 @@ public interface FarmDataProvider {
     List<EntityInfo> entities(FarmConfig farm);
     List<StorageInfo> storage(FarmConfig farm);
     boolean chunkLoaded(FarmConfig farm);
-    FakePlayerStatus fakePlayer(FarmConfig farm);
+    List<OccupantInfo> occupants(FarmConfig farm);
 }

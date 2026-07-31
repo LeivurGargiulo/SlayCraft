@@ -156,23 +156,31 @@ public final class RealFarmDataProvider implements FarmDataProvider {
     }
 
     @Override
-    public FakePlayerStatus fakePlayer(FarmConfig farm) {
-        String name = farm.fakePlayerName();
-        if (name == null) {
-            return null;
+    public List<OccupantInfo> occupants(FarmConfig farm) {
+        if (farm.afkSpot() == null) {
+            return List.of();
         }
         MinecraftServer server = serverSupplier.get();
-        FakePlayerStatus offline = new FakePlayerStatus(name, false, null);
         if (server == null) {
-            return offline;
+            return List.of();
         }
         return onMainThread(server, () -> {
-            ServerPlayer player = server.getPlayerList().getPlayerByName(name);
-            if (!(player instanceof EntityPlayerMPFake)) {
-                return offline;
+            Position center = farm.afkSpot().position();
+            double radius = farm.afkSpot().radius();
+            List<OccupantInfo> result = new ArrayList<>();
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                BlockPos pos = player.blockPosition();
+                double dx = pos.getX() - center.x();
+                double dy = pos.getY() - center.y();
+                double dz = pos.getZ() - center.z();
+                if (dx * dx + dy * dy + dz * dz <= radius * radius) {
+                    result.add(new OccupantInfo(
+                            player.getGameProfile().name(),
+                            player instanceof EntityPlayerMPFake,
+                            new Position(pos.getX(), pos.getY(), pos.getZ())));
+                }
             }
-            BlockPos pos = player.blockPosition();
-            return new FakePlayerStatus(name, true, new Position(pos.getX(), pos.getY(), pos.getZ()));
-        }, offline);
+            return result;
+        }, List.of());
     }
 }
