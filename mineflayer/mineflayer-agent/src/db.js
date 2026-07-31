@@ -74,6 +74,7 @@ class JobManager {
     this.stmtIncrementCompleted = this.db.prepare(`UPDATE jobs SET completed_actions = completed_actions + 1, updated_at = ? WHERE id = ?`);
     this.stmtUpdateJobTimestamp = this.db.prepare(`UPDATE jobs SET updated_at = ? WHERE id = ?`);
     this.stmtGetPendingActions = this.db.prepare(`SELECT * FROM job_actions WHERE job_id = ? AND status = 'pending' ORDER BY seq ASC`);
+    this.stmtGetDoneActions = this.db.prepare(`SELECT * FROM job_actions WHERE job_id = ? AND status = 'done' ORDER BY seq ASC`);
     this.stmtGetInterruptedJobs = this.db.prepare(`SELECT * FROM jobs WHERE status IN ('running', 'stopping')`);
     this.stmtCancelJob = this.db.prepare(`UPDATE jobs SET status = 'cancelled', updated_at = ? WHERE id = ?`);
   }
@@ -137,6 +138,7 @@ class JobManager {
   }
 
   getPendingActions(jobId) { return this.stmtGetPendingActions.all(jobId); }
+  getDoneActions(jobId) { return this.stmtGetDoneActions.all(jobId); }
   getInterruptedJobs() { return this.stmtGetInterruptedJobs.all(); }
   close() { this.db.close(); }
 }
