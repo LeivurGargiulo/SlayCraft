@@ -164,11 +164,13 @@ class ExecutionEngine {
   }
 
   // Resolves the Item to equip: the requested name if we're really holding it,
-  // otherwise any item in inventory (see _runPlace). Returns undefined when the
-  // inventory is genuinely empty, which the caller treats as stock exhaustion.
+  // otherwise any *placeable block* in inventory (see _runPlace) - never a
+  // tool. Returns undefined when no placeable block is held, which the
+  // caller treats as stock exhaustion.
   _resolveInventoryItem(blockType) {
     const items = this.bot.inventory.items();
-    return items.find((i) => i.name === blockType) ?? items[0];
+    const isBlock = (item) => this.bot.registry.blocksByName[item.name] !== undefined;
+    return items.find((i) => i.name === blockType) ?? items.find(isBlock);
   }
 
   // Finds a solid neighbor block adjacent to pos to place against, and the

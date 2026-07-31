@@ -70,6 +70,12 @@ function createFakeBot(blockMap, initialInventory = {}) {
       async goto() {},
     },
     chat() {},
+    // Minimal stand-in for prismarine-registry's blocksByName: only names
+    // that are actually placeable blocks in these tests. 'iron_shovel' is
+    // deliberately absent - it's a tool, not a block.
+    registry: {
+      blocksByName: { dirt: {}, stone: {} },
+    },
   };
   return bot;
 }
@@ -210,6 +216,29 @@ test('place-only job succeeds when the bot already carries stock from a prior jo
   const status = db.getStatus(jobId);
   assert.strictEqual(status.status, 'completed', 'a place-only job must succeed using real carried-over inventory, not a per-job stock counter');
   assert.ok(blockMap['0,64,0'], 'the block should actually have been placed');
+
+  db.close();
+});
+
+test('place skips a non-block tool in inventory and equips the actual block instead', async () => {
+  const db = createTestDb();
+  const blockMap = {};
+  setBlock(blockMap, { x: 0, y: 63, z: 0 }, 1, 'stone');
+
+  const jobId = db.enqueue('flatten', 'player1', '{}', [
+    { action: 'place', x: 0, y: 64, z: 0 },
+  ]);
+
+  // Shovel sorts before dirt in inventory.items() - a naive "first slot"
+  // fallback would equip the tool and try to place air with it forever.
+  const bot = createFakeBot(blockMap, { iron_shovel: 1, dirt: 3 });
+  const engine = new ExecutionEngine(bot, db);
+  await engine.runJob(jobId);
+
+  const status = db.getStatus(jobId);
+  assert.strictEqual(status.status, 'completed', 'the place must succeed by skipping the tool and using the real block');
+  assert.strictEqual(bot.equipCalls.length, 1);
+  assert.strictEqual(bot.equipCalls[0].item.name, 'dirt', 'must equip dirt, never the shovel');
 
   db.close();
 });
