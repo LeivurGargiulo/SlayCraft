@@ -19,5 +19,8 @@ export function openDb(dbPath: string): Database.Database {
   if (!farmMetadataColumns.some((c) => c.name === 'coordinates')) {
     db.exec('ALTER TABLE farm_metadata ADD COLUMN coordinates TEXT');
   }
+  if (!farmMetadataColumns.some((c) => c.name === 'expected_rates')) {
+    db.exec('ALTER TABLE farm_metadata ADD COLUMN expected_rates TEXT');
+  }
   return db;
 }

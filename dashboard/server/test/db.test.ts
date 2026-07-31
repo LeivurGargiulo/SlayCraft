@@ -24,6 +24,15 @@ test('projects table has a nullable coordinates column', () => {
   assert.equal(row.coordinates, null);
 });
 
+test('farm_metadata table has a nullable expected_rates column', () => {
+  const db = openDb(':memory:');
+  const columns = db.prepare('PRAGMA table_info(farm_metadata)').all().map((c: any) => c.name);
+  assert.ok(columns.includes('expected_rates'), 'farm_metadata table missing expected_rates column');
+  db.prepare("INSERT INTO farm_metadata (farm_id) VALUES ('test-farm')").run();
+  const row = db.prepare("SELECT expected_rates FROM farm_metadata WHERE farm_id = 'test-farm'").get() as any;
+  assert.equal(row.expected_rates, null);
+});
+
 test('rejects an invalid task status via CHECK constraint', () => {
   const db = openDb(':memory:');
   assert.throws(() => {
