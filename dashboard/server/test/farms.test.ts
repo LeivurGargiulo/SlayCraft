@@ -56,6 +56,28 @@ test('GET /api/farms reports offline once flow into storage has stopped, even if
   assert.equal(res.json().farms[0].online, false);
 });
 
+test('GET /api/farms reports offline when an occupant is present but storage flow has stopped', async (t) => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+
+  const now = Date.now();
+  const sampleAt = (minutesAgo: number) => new Date(now - minutesAgo * 60 * 1000).toISOString();
+  const samples = [
+    { sampledAt: sampleAt(10), storageCounts: { iron_ingot: 320 } },
+    { sampledAt: sampleAt(5), storageCounts: { iron_ingot: 320 } },
+    { sampledAt: sampleAt(0), storageCounts: { iron_ingot: 320 } },
+  ];
+
+  const fetchMock = mock.method(globalThis, 'fetch', async (url: string) => {
+    if (url.includes('/history')) return new Response(JSON.stringify({ samples }), { status: 200 });
+    return new Response(JSON.stringify({ farms: [{ id: 'iron', name: 'Iron Farm', occupantCount: 1 }] }), { status: 200 });
+  });
+  t.after(() => fetchMock.mock.restore());
+
+  const res = await app.inject({ method: 'GET', url: '/api/farms', headers: { cookie } });
+  assert.equal(res.json().farms[0].online, false);
+});
+
 test('GET /api/farms stays online when a tracked item grows even though an unrelated item in the same chest was withdrawn', async (t) => {
   const { app, db } = makeApp();
   const cookie = await loginAndGetCookie(app, db);

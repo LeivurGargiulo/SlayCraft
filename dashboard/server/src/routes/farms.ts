@@ -86,7 +86,7 @@ export function registerFarmRoutes(app: FastifyInstance, db: Database.Database, 
       const farms = await Promise.all(
         data.farms.map(async (f) => ({
           ...f,
-          online: f.occupantCount > 0 || (await isProducing(f.id)),
+          online: await isProducing(f.id),
           metadata: getMetadata(db, f.id),
           images: getImages(db, f.id),
         }))
@@ -98,8 +98,8 @@ export function registerFarmRoutes(app: FastifyInstance, db: Database.Database, 
   app.get('/api/farms/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
     return withMcfm(reply, async () => {
-      const farm = (await mcfmFetch(`/farms/${encodeURIComponent(id)}`)) as Record<string, unknown> & { occupantCount: number };
-      return { ...farm, online: farm.occupantCount > 0 || (await isProducing(id)), metadata: getMetadata(db, id), images: getImages(db, id) };
+      const farm = (await mcfmFetch(`/farms/${encodeURIComponent(id)}`)) as Record<string, unknown>;
+      return { ...farm, online: await isProducing(id), metadata: getMetadata(db, id), images: getImages(db, id) };
     });
   });
 
