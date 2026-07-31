@@ -70,9 +70,23 @@ export interface StorageItem {
 
 export interface FarmDetail extends FarmSummary {
   anchor: { x: number; y: number; z: number };
+  entityScanRadius: number;
+  fakePlayerName: string | null;
+  afkSpot: { position: { x: number; y: number; z: number }; radius: number } | null;
   occupants: Array<{ name: string; isFakePlayer: boolean; position: { x: number; y: number; z: number } }>;
   entities: Array<{ id: string; type: string; customName: string | null; position: { x: number; y: number; z: number }; health: number }>;
   storage: Array<{ id: string; label: string; position: { x: number; y: number; z: number }; capacity: number; items: StorageItem[] }>;
+}
+
+export interface FarmConfig {
+  id: string;
+  name: string;
+  dimension: string;
+  anchor: { x: number; y: number; z: number };
+  entityScanRadius: number;
+  fakePlayerName: string | null;
+  storage: Array<{ id: string; label: string; position: { x: number; y: number; z: number } }>;
+  afkSpot: { position: { x: number; y: number; z: number }; radius: number } | null;
 }
 
 export interface FarmHistorySample {

@@ -76,6 +76,56 @@ test('metadata expected_rates defaults to an empty object when unset', async () 
   assert.deepEqual(res.json().metadata.expected_rates, {});
 });
 
+const sampleFarmConfig = {
+  id: 'iron',
+  name: 'Iron Farm',
+  dimension: 'minecraft:overworld',
+  anchor: { x: 120, y: 80, z: -500 },
+  entityScanRadius: 16,
+  fakePlayerName: null,
+  storage: [],
+  afkSpot: null,
+};
+
+test('POST /api/farms creates a farm and proxies the config to MCFarmManager', async (t) => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  const fetchMock = mock.method(globalThis, 'fetch', async (_url: string, init: RequestInit) => {
+    assert.equal(init.method, 'POST');
+    assert.equal((init.headers as Record<string, string>)['Content-Type'], 'application/json');
+    return new Response(JSON.stringify(sampleFarmConfig), { status: 201 });
+  });
+  t.after(() => fetchMock.mock.restore());
+
+  const res = await app.inject({ method: 'POST', url: '/api/farms', headers: { cookie }, payload: sampleFarmConfig });
+  assert.equal(res.statusCode, 201);
+  assert.equal(res.json().id, 'iron');
+});
+
+test('PUT /api/farms/:id rejects a body id mismatch', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  const res = await app.inject({ method: 'PUT', url: '/api/farms/other', headers: { cookie }, payload: sampleFarmConfig });
+  assert.equal(res.statusCode, 400);
+});
+
+test('DELETE /api/farms/:id proxies deletion and clears dashboard-side metadata/images', async (t) => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  db.prepare('INSERT INTO farm_metadata (farm_id, notes) VALUES (?, ?)').run('iron', 'nota');
+  db.prepare('INSERT INTO farm_images (farm_id, path) VALUES (?, ?)').run('iron', 'nonexistent.png');
+  const fetchMock = mock.method(globalThis, 'fetch', async (_url: string, init: RequestInit) => {
+    assert.equal(init.method, 'DELETE');
+    return new Response(null, { status: 204 });
+  });
+  t.after(() => fetchMock.mock.restore());
+
+  const res = await app.inject({ method: 'DELETE', url: '/api/farms/iron', headers: { cookie } });
+  assert.equal(res.statusCode, 204);
+  assert.equal(db.prepare('SELECT * FROM farm_metadata WHERE farm_id = ?').get('iron'), undefined);
+  assert.equal(db.prepare('SELECT * FROM farm_images WHERE farm_id = ?').get('iron'), undefined);
+});
+
 test('farm image upload and delete', async (t) => {
   const { app, db } = makeApp();
   const cookie = await loginAndGetCookie(app, db);

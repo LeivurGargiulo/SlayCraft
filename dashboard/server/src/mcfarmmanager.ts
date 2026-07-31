@@ -6,10 +6,21 @@ export class McfmError extends Error {
   }
 }
 
-export async function mcfmFetch(pathAndQuery: string): Promise<unknown> {
+export async function mcfmFetch(
+  pathAndQuery: string,
+  init?: { method?: string; body?: unknown }
+): Promise<unknown> {
   let res: Response;
   try {
-    res = await fetch(`${BASE_URL}${pathAndQuery}`);
+    const headers: Record<string, string> = {};
+    if (init?.body !== undefined) headers['Content-Type'] = 'application/json';
+    const token = process.env.MCFARMMANAGER_API_TOKEN;
+    if (init?.method && init.method !== 'GET' && token) headers['X-API-Token'] = token;
+    res = await fetch(`${BASE_URL}${pathAndQuery}`, {
+      method: init?.method,
+      headers,
+      body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
+    });
   } catch {
     throw new McfmError(502, 'No se pudo conectar con MCFarmManager');
   }
@@ -17,5 +28,6 @@ export async function mcfmFetch(pathAndQuery: string): Promise<unknown> {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new McfmError(res.status, body.error ?? 'Error de MCFarmManager');
   }
+  if (res.status === 204) return null;
   return res.json();
 }

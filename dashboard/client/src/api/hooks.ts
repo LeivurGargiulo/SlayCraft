@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from './client';
 import type {
   Task, TaskInput, Subtask, Player, FarmSummary, FarmDetail, FarmHistorySample,
-  LivePlayer, Performance, Project, ProjectImage, GalleryImage, FarmImage,
+  LivePlayer, Performance, Project, ProjectImage, GalleryImage, FarmImage, FarmConfig,
 } from './types';
 
 // --- auth ---
@@ -126,6 +126,30 @@ export function useFarmHistory(id: string, range: string) {
     queryKey: ['farms', id, 'history', range],
     queryFn: () => apiFetch<{ samples: FarmHistorySample[] }>(`/farms/${id}/history?range=${range}`),
     refetchInterval: 30_000,
+  });
+}
+export function useCreateFarm() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: FarmConfig) => apiFetch<FarmConfig>('/farms', { method: 'POST', body: JSON.stringify(input) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['farms'] }),
+  });
+}
+export function useUpdateFarmConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: FarmConfig) => apiFetch<FarmConfig>(`/farms/${input.id}`, { method: 'PUT', body: JSON.stringify(input) }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['farms'] });
+      qc.invalidateQueries({ queryKey: ['farms', vars.id] });
+    },
+  });
+}
+export function useDeleteFarm() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/farms/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['farms'] }),
   });
 }
 export function useUpdateFarmMetadata() {

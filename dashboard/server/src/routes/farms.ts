@@ -36,7 +36,10 @@ async function withMcfm<T>(reply: import('fastify').FastifyReply, fn: () => Prom
   try {
     return await fn();
   } catch (err) {
-    if (err instanceof McfmError) return reply.code(err.status === 404 ? 404 : 502).send({ error: err.message });
+    if (err instanceof McfmError) {
+      const code = [400, 403, 404, 409].includes(err.status) ? err.status : 502;
+      return reply.code(code).send({ error: err.message });
+    }
     throw err;
   }
 }
@@ -46,6 +49,19 @@ const metadataSchema = z.object({
   tags: z.array(z.string()).optional(),
   coordinates: z.string().nullable().optional(),
   expected_rates: z.record(z.string(), z.number()).optional(),
+});
+
+const positionSchema = z.object({ x: z.number().int(), y: z.number().int(), z: z.number().int() });
+
+const farmConfigSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  dimension: z.string().min(1),
+  anchor: positionSchema,
+  entityScanRadius: z.number().int(),
+  fakePlayerName: z.string().nullable(),
+  storage: z.array(z.object({ id: z.string(), label: z.string(), position: positionSchema })),
+  afkSpot: z.object({ position: positionSchema, radius: z.number().int() }).nullable(),
 });
 
 export function registerFarmRoutes(app: FastifyInstance, db: Database.Database, uploadsDir: string) {
@@ -68,6 +84,35 @@ export function registerFarmRoutes(app: FastifyInstance, db: Database.Database, 
     const { id } = req.params as { id: string };
     const { range } = req.query as { range?: string };
     return withMcfm(reply, () => mcfmFetch(`/farms/${encodeURIComponent(id)}/history?range=${encodeURIComponent(range ?? '24h')}`));
+  });
+
+  app.post('/api/farms', async (req, reply) => {
+    const body = farmConfigSchema.parse(req.body);
+    return withMcfm(reply, async () => {
+      const created = await mcfmFetch('/farms', { method: 'POST', body });
+      reply.code(201);
+      return created;
+    });
+  });
+
+  app.put('/api/farms/:id', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const body = farmConfigSchema.parse(req.body);
+    if (body.id !== id) return reply.code(400).send({ error: 'El id del cuerpo debe coincidir con el de la URL' });
+    return withMcfm(reply, () => mcfmFetch(`/farms/${encodeURIComponent(id)}`, { method: 'PUT', body }));
+  });
+
+  app.delete('/api/farms/:id', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    return withMcfm(reply, async () => {
+      await mcfmFetch(`/farms/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const images = db.prepare('SELECT * FROM farm_images WHERE farm_id = ?').all(id) as Array<{ path: string }>;
+      for (const img of images) fs.rmSync(path.join(uploadsDir, img.path), { force: true });
+      db.prepare('DELETE FROM farm_images WHERE farm_id = ?').run(id);
+      db.prepare('DELETE FROM farm_metadata WHERE farm_id = ?').run(id);
+      reply.code(204);
+      return null;
+    });
   });
 
   app.patch('/api/farms/:id/metadata', async (req) => {

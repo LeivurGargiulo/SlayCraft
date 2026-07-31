@@ -15,6 +15,7 @@ services:
     environment:
       PORT: 3001
       MCFARMMANAGER_URL: ${MCFARMMANAGER_URL:-http://mcserver:8642}
+      MCFARMMANAGER_API_TOKEN: ${MCFARMMANAGER_API_TOKEN:-}
       COOKIE_SECRET: ${COOKIE_SECRET:?set COOKIE_SECRET in .env}
       DASHBOARD_DATA_DIR: /data
     volumes:
