@@ -77,20 +77,74 @@ export default function GranjaDetail() {
             <p className="text-sm text-slate-500">Sin trabajador asignado.</p>
           )}
         </Card>
+
+        <Card>
+          <h2 className="mb-2 font-mono text-slate-200">Entidades</h2>
+          {f.entities.length > 0 ? (
+            <div className="space-y-1">
+              {Object.entries(
+                f.entities.reduce<Record<string, number>>((acc, e) => {
+                  const type = e.type.replace(/^minecraft:/, '');
+                  acc[type] = (acc[type] ?? 0) + 1;
+                  return acc;
+                }, {})
+              ).map(([type, count]) => (
+                <div key={type} className="flex justify-between text-sm">
+                  <span>{type}</span>
+                  <span className="font-mono text-slate-400">{count}x</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">Sin entidades detectadas.</p>
+          )}
+        </Card>
       </div>
 
       <Card>
         <h2 className="mb-2 font-mono text-slate-200">Almacenamiento</h2>
-        <div className="space-y-1">
-          {f.storage.map((s) => (
-            <div key={s.id} className="flex justify-between text-sm">
-              <span>{s.label}</span>
-              <span className="font-mono text-slate-400">
-                {s.items.reduce((sum, i) => sum + i.count, 0)} / {s.capacity * 64}
-              </span>
+        {(() => {
+          const allItems = f.storage.flatMap((s) => s.items);
+          const total = allItems.reduce((sum, i) => sum + i.count, 0);
+          const byType = allItems.reduce<Record<string, number>>((acc, i) => {
+            const type = i.itemId.replace(/^minecraft:/, '');
+            acc[type] = (acc[type] ?? 0) + i.count;
+            return acc;
+          }, {});
+          return (
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm font-semibold">
+                <span>Total</span>
+                <span className="font-mono text-slate-200">{total}</span>
+              </div>
+              {Object.keys(byType).length > 0 ? (
+                <div className="space-y-1">
+                  {Object.entries(byType).map(([type, count]) => (
+                    <div key={type} className="flex justify-between text-sm">
+                      <span>{type}</span>
+                      <span className="font-mono text-slate-400">{count}x</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">Sin ítems almacenados.</p>
+              )}
+              <details className="text-sm">
+                <summary className="cursor-pointer text-cyan hover:underline">Por contenedor</summary>
+                <div className="mt-2 space-y-1">
+                  {f.storage.map((s) => (
+                    <div key={s.id} className="flex justify-between">
+                      <span>{s.label}</span>
+                      <span className="font-mono text-slate-400">
+                        {s.items.reduce((sum, i) => sum + i.count, 0)} / {s.capacity * 64}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </details>
             </div>
-          ))}
-        </div>
+          );
+        })()}
       </Card>
 
       <Card>
