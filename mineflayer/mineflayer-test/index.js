@@ -178,6 +178,11 @@ function createBot() {
   })
   bot.on('end', (reason) => {
     console.log('[bot] disconnected, reason:', reason)
+    // Stop the running job's loop + progress interval BEFORE closing the db,
+    // otherwise the 10s progress timer fires against a closed db and its
+    // uncaught throw kills the reconnect timer below. The job is left
+    // 'running' so the next spawn's getInterruptedJobs() requeue resumes it.
+    executionEngine.abort()
     jobManager.close()
     console.log('[bot] reconnecting in 5s...')
     setTimeout(createBot, 5000)

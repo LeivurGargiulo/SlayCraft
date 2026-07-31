@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
+const { Vec3 } = require('vec3');
 const JobManager = require('../src/db.js');
 const ExecutionEngine = require('../src/executionEngine.js');
 
@@ -9,16 +10,35 @@ function createTestDb() {
 
 /**
  * Fake bot: blockAt is backed by an in-memory map keyed by "x,y,z".
- * dig removes the block from the map. placeBlock adds a block at
- * referenceBlock.position + faceVector. equip/pathfinder.goto are no-ops.
+ * dig removes the block from the map and adds the drop to the fake inventory.
+ * placeBlock adds a block at referenceBlock.position + faceVector and consumes
+ * one of the currently-equipped item. pathfinder.goto is a no-op.
+ *
+ * Both blockAt and equip assert on the shape of what the engine hands them,
+ * because the real mineflayer APIs are strict about it: blockAt needs a Vec3
+ * (a plain {x,y,z} throws), and equip needs an Item object or numeric id
+ * (a name string throws).
+ *
+ * @param {Object} blockMap
+ * @param {Object} initialInventory - {itemName: count} the bot starts holding
  */
-function createFakeBot(blockMap) {
+function createFakeBot(blockMap, initialInventory = {}) {
   const key = (pos) => `${pos.x},${pos.y},${pos.z}`;
   const equipCalls = [];
+  const counts = new Map(Object.entries(initialInventory));
+  let equipped = null;
 
   const bot = {
     equipCalls,
+    inventory: {
+      items() {
+        return [...counts]
+          .filter(([, count]) => count > 0)
+          .map(([name, count]) => ({ name, count, type: 1, slot: 36 }));
+      },
+    },
     blockAt(pos) {
+      assert.ok(pos instanceof Vec3, 'blockAt must be called with a Vec3, not a plain object');
       return blockMap[key(pos)] ?? null;
     },
     async dig(block) {
@@ -26,17 +46,25 @@ function createFakeBot(blockMap) {
         throw new Error('cannot dig air');
       }
       delete blockMap[key(block.position)];
+      counts.set(block.name, (counts.get(block.name) ?? 0) + 1);
     },
-    async equip(itemName, destination) {
-      equipCalls.push({ itemName, destination });
+    async equip(item, destination) {
+      assert.ok(
+        item && typeof item === 'object',
+        'equip must be called with an inventory Item object, not a name string'
+      );
+      equipCalls.push({ item, destination });
+      equipped = item;
     },
     async placeBlock(referenceBlock, faceVector) {
+      if (!equipped) throw new Error('nothing equipped');
       const pos = {
         x: referenceBlock.position.x + faceVector.x,
         y: referenceBlock.position.y + faceVector.y,
         z: referenceBlock.position.z + faceVector.z,
       };
-      blockMap[key(pos)] = { type: 1, name: 'placed', position: pos };
+      blockMap[key(pos)] = { type: 1, name: equipped.name, position: pos };
+      counts.set(equipped.name, counts.get(equipped.name) - 1);
     },
     pathfinder: {
       async goto() {},
@@ -114,7 +142,9 @@ test('resume after crash: stock rebuild is correct and no double-execution', asy
   // that the first break already physically happened pre-crash.
   delete blockMap['0,65,0'];
 
-  const bot = createFakeBot(blockMap);
+  // The bot is still physically holding the block it dug before the crash,
+  // so the fake inventory is seeded to match the rebuilt stock.
+  const bot = createFakeBot(blockMap, { dirt: 1 });
   const engine = new ExecutionEngine(bot, db);
 
   let digCount = 0;
@@ -136,18 +166,24 @@ test('resume after crash: stock rebuild is correct and no double-execution', asy
   assert.ok(blockMap['0,64,0'], 'place at 0,64,0 should have happened using rebuilt stock');
   assert.ok(blockMap['1,64,0'], 'place at 1,64,0 should have happened using rebuilt stock');
 
-  // Regression check: stock must be keyed by a real Map (not a plain object),
-  // so a `null` block_type is never coerced into the string "null" and handed
-  // to bot.equip - that string is not a real item name and would fail equip
-  // for real in mineflayer.
+  // Regression checks on what reaches bot.equip:
+  // - a real inventory Item object (asserted inside the fake equip), never a
+  //   name string, which real mineflayer rejects;
+  // - stock keyed by a real Map (not a plain object), so a `null` block_type is
+  //   never coerced into the string "null" and looked up as an item name. The
+  //   null-keyed place falls back to whatever is actually in inventory.
   assert.strictEqual(bot.equipCalls.length, 2, 'both place actions should have equipped an item');
   assert.ok(
-    bot.equipCalls.some((c) => c.itemName === 'dirt'),
-    'the place action requesting "dirt" should equip the real block name'
+    bot.equipCalls.every((c) => typeof c.item === 'object' && c.item !== null),
+    'equip must always receive an Item object'
   );
   assert.ok(
-    bot.equipCalls.every((c) => c.itemName !== 'null'),
-    'equip should never be called with the coerced string "null"'
+    bot.equipCalls.some((c) => c.item.name === 'dirt'),
+    'the place action requesting "dirt" should equip the real dirt item'
+  );
+  assert.ok(
+    bot.equipCalls.every((c) => c.item.name !== 'null'),
+    'equip should never be handed an item named by the coerced string "null"'
   );
 
   db.close();
@@ -193,6 +229,84 @@ test('stop requested mid-job: runJob exits early and marks the job cancelled', a
 
   const pending = db.getPendingActions(jobId);
   assert.strictEqual(pending.length, 2, 'the remaining 2 actions should still be pending, untouched');
+
+  db.close();
+});
+
+test('cancel mid-job: runJob exits early and leaves the job cancelled (not overwritten)', async () => {
+  const db = createTestDb();
+  const blockMap = {};
+  setBlock(blockMap, { x: 0, y: 65, z: 0 }, 1, 'dirt');
+  setBlock(blockMap, { x: 1, y: 65, z: 0 }, 1, 'dirt');
+  setBlock(blockMap, { x: 2, y: 65, z: 0 }, 1, 'dirt');
+
+  const jobId = db.enqueue('flatten', 'player1', '{}', [
+    { action: 'break', x: 0, y: 65, z: 0 },
+    { action: 'break', x: 1, y: 65, z: 0 },
+    { action: 'break', x: 2, y: 65, z: 0 },
+  ]);
+
+  const bot = createFakeBot(blockMap);
+
+  // The owner cancels their own currently-running job after the first action.
+  const originalDig = bot.dig.bind(bot);
+  let digCount = 0;
+  bot.dig = async (block) => {
+    digCount += 1;
+    const result = await originalDig(block);
+    if (digCount === 1) {
+      db.cancel(jobId, 'player1', false);
+    }
+    return result;
+  };
+
+  const engine = new ExecutionEngine(bot, db);
+  await engine.runJob(jobId);
+
+  assert.strictEqual(digCount, 1, 'only the first action should have run before the cancel was seen');
+
+  const status = db.getStatus(jobId);
+  assert.strictEqual(status.status, 'cancelled', 'cancelled must NOT be overwritten with completed/failed');
+  assert.strictEqual(db.getPendingActions(jobId).length, 2, 'remaining actions stay pending, untouched');
+
+  db.close();
+});
+
+test('abort (disconnect): runJob exits without further db writes and leaves the job running', async () => {
+  const db = createTestDb();
+  const blockMap = {};
+  setBlock(blockMap, { x: 0, y: 65, z: 0 }, 1, 'dirt');
+  setBlock(blockMap, { x: 1, y: 65, z: 0 }, 1, 'dirt');
+
+  const jobId = db.enqueue('flatten', 'player1', '{}', [
+    { action: 'break', x: 0, y: 65, z: 0 },
+    { action: 'break', x: 1, y: 65, z: 0 },
+  ]);
+  db.markRunning(jobId);
+
+  const bot = createFakeBot(blockMap);
+  const engine = new ExecutionEngine(bot, db);
+
+  const originalDig = bot.dig.bind(bot);
+  let digCount = 0;
+  bot.dig = async (block) => {
+    digCount += 1;
+    const result = await originalDig(block);
+    engine.abort(); // mimics index.js's 'end' handler on disconnect
+    return result;
+  };
+
+  await engine.runJob(jobId);
+
+  assert.strictEqual(digCount, 1, 'the loop must stop as soon as it is aborted');
+
+  const status = db.getStatus(jobId);
+  assert.strictEqual(status.status, 'running',
+    'abort must not set a terminal status - getInterruptedJobs() requeues it on reconnect');
+  assert.ok(
+    db.getInterruptedJobs().some((j) => j.id === jobId),
+    'the aborted job must be picked up by the crash-resume requeue'
+  );
 
   db.close();
 });

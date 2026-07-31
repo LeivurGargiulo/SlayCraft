@@ -3,6 +3,11 @@ const { compileFlatten } = require('./flattenCompiler')
 
 const COMMAND_PREFIX = '!bot'
 
+// compileFlatten scans the whole region synchronously, so an unbounded region
+// blocks the event loop long enough for the server to keepalive-kick us.
+// 10000 columns = a 100x100 area, ~200k actions worst case.
+const MAX_REGION_COLUMNS = 10000
+
 /**
  * Attaches the whitelisted chat-command dispatcher to `bot`.
  *
@@ -85,6 +90,12 @@ function handleFlatten(bot, args, username, jobManager, startProcessing) {
   const [x1, z1, x2, z2, targetY] = args.map(Number)
   if ([x1, z1, x2, z2, targetY].some(Number.isNaN)) {
     bot.chat('All arguments must be numbers.')
+    return
+  }
+
+  const columns = (Math.abs(x2 - x1) + 1) * (Math.abs(z2 - z1) + 1)
+  if (columns > MAX_REGION_COLUMNS) {
+    bot.chat(`Region too large: ${columns} columns (max ${MAX_REGION_COLUMNS}). Split it into smaller jobs.`)
     return
   }
 
@@ -183,4 +194,4 @@ function handleStop(bot, username, admins, jobManager, jobState) {
   bot.chat(`Job #${jobState.currentJobId} will stop after its current action.`)
 }
 
-module.exports = { registerCommands }
+module.exports = { registerCommands, MAX_REGION_COLUMNS }
