@@ -34,8 +34,19 @@ class ExecutionEngine {
       this.bot.chat(`Job ${jobId}: ${status.completed_actions}/${status.total_actions} actions complete`);
     }, PROGRESS_INTERVAL_MS);
 
+    let stopped = false;
+
     try {
       for (const row of pending) {
+        // Checked once per action (cheap - jobs table already has this row
+        // cached by sqlite) so `!bot stop` (which sets status to 'stopping')
+        // takes effect between actions instead of running the whole queued
+        // action list to completion.
+        if (this.jobManager.getStatus(jobId).status === 'stopping') {
+          stopped = true;
+          break;
+        }
+
         if (row.action === 'break') {
           await this._runBreak(jobId, row, stock);
         } else if (row.action === 'place') {
@@ -44,6 +55,11 @@ class ExecutionEngine {
       }
     } finally {
       clearInterval(interval);
+    }
+
+    if (stopped) {
+      this.jobManager.markJobStatus(jobId, 'cancelled');
+      return;
     }
 
     const failed = this._hasFailedActions(jobId);

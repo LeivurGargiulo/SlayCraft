@@ -153,6 +153,50 @@ test('resume after crash: stock rebuild is correct and no double-execution', asy
   db.close();
 });
 
+test('stop requested mid-job: runJob exits early and marks the job cancelled', async () => {
+  const db = createTestDb();
+  const blockMap = {};
+  setBlock(blockMap, { x: 0, y: 65, z: 0 }, 1, 'dirt');
+  setBlock(blockMap, { x: 1, y: 65, z: 0 }, 1, 'dirt');
+  setBlock(blockMap, { x: 2, y: 65, z: 0 }, 1, 'dirt');
+
+  const jobId = db.enqueue('flatten', 'player1', '{}', [
+    { action: 'break', x: 0, y: 65, z: 0 },
+    { action: 'break', x: 1, y: 65, z: 0 },
+    { action: 'break', x: 2, y: 65, z: 0 },
+  ]);
+
+  const bot = createFakeBot(blockMap);
+
+  // Wrap dig so that after the first action completes, a "stop" request
+  // arrives (mimicking commands.js's stop handler calling markJobStatus
+  // between actions) - the loop must not start the 2nd/3rd action.
+  const originalDig = bot.dig.bind(bot);
+  let digCount = 0;
+  bot.dig = async (block) => {
+    digCount += 1;
+    const result = await originalDig(block);
+    if (digCount === 1) {
+      db.markJobStatus(jobId, 'stopping');
+    }
+    return result;
+  };
+
+  const engine = new ExecutionEngine(bot, db);
+  await engine.runJob(jobId);
+
+  assert.strictEqual(digCount, 1, 'only the first action should have run before the stop was seen');
+
+  const status = db.getStatus(jobId);
+  assert.strictEqual(status.status, 'cancelled', 'job should end cancelled, not completed/failed');
+  assert.strictEqual(status.completed_actions, 1, 'only the one completed action should be counted');
+
+  const pending = db.getPendingActions(jobId);
+  assert.strictEqual(pending.length, 2, 'the remaining 2 actions should still be pending, untouched');
+
+  db.close();
+});
+
 test('stock exhaustion: place with no matching stock fails with exact error, engine continues', async () => {
   const db = createTestDb();
   const blockMap = {};

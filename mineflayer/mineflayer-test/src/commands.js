@@ -12,8 +12,8 @@ const COMMAND_PREFIX = '!bot'
  * @param {Set<string>} deps.whitelist - usernames allowed to issue any command
  * @param {Set<string>} deps.admins - usernames allowed to cancel others' jobs / stop
  * @param {() => Promise<void>} deps.startProcessing - kicks the FIFO queue-drain loop if idle
- * @param {{currentJobId: number|null, stopRequested: boolean}} deps.jobState - shared
- *   mutable state written by index.js's drain loop, read (and, for stop, written) here.
+ * @param {{currentJobId: number|null}} deps.jobState - shared mutable state
+ *   written by index.js's drain loop, read here (for status/stop's default job).
  */
 function registerCommands(bot, { jobManager, whitelist, admins, startProcessing, jobState }) {
   bot.on('chat', (username, message) => {
@@ -50,7 +50,7 @@ function registerCommands(bot, { jobManager, whitelist, admins, startProcessing,
           handleCancel(bot, args, username, jobManager, admins)
           break
         case 'stop':
-          handleStop(bot, username, admins, jobState)
+          handleStop(bot, username, admins, jobManager, jobState)
           break
         default:
           bot.chat(`Unknown command: ${cmd}. Try: goto, flatten, queue, status, cancel, stop`)
@@ -167,7 +167,7 @@ function handleCancel(bot, args, username, jobManager, admins) {
   }
 }
 
-function handleStop(bot, username, admins, jobState) {
+function handleStop(bot, username, admins, jobManager, jobState) {
   if (!admins.has(username)) {
     bot.chat(`Sorry ${username}, only admins can stop the current job.`)
     return
@@ -176,8 +176,11 @@ function handleStop(bot, username, admins, jobState) {
     bot.chat('No job currently running.')
     return
   }
-  jobState.stopRequested = true
-  bot.chat(`Stop requested for job #${jobState.currentJobId}. It will stop after the current action.`)
+  // ExecutionEngine.runJob checks the job's own status between actions and
+  // exits (marking the job 'cancelled') once it sees 'stopping' - see
+  // executionEngine.js's runJob loop.
+  jobManager.markJobStatus(jobState.currentJobId, 'stopping')
+  bot.chat(`Job #${jobState.currentJobId} will stop after its current action.`)
 }
 
 module.exports = { registerCommands }

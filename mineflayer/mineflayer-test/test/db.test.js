@@ -301,6 +301,24 @@ test('enqueue transaction rolls back on error', async (t) => {
   db.close();
 });
 
+test('markJobStatus("stopping") keeps job in getQueue and getInterruptedJobs', async (t) => {
+  const db = createTestDb();
+
+  const jobId = db.enqueue('flatten', 'player1', '{}', []);
+  db.markRunning(jobId);
+  db.markJobStatus(jobId, 'stopping');
+
+  const queue = db.getQueue();
+  assert.strictEqual(queue.length, 1, 'stopping job should still show up in the queue');
+  assert.strictEqual(queue[0].status, 'stopping', 'queue entry should reflect stopping status');
+
+  const interrupted = db.getInterruptedJobs();
+  assert.strictEqual(interrupted.length, 1, 'a crash during stopping should still be treated as interrupted');
+  assert.strictEqual(interrupted[0].id, jobId, 'interrupted job id should match');
+
+  db.close();
+});
+
 test('database persistence across method calls', async (t) => {
   const db = createTestDb();
 

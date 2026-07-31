@@ -49,7 +49,7 @@ class JobManager {
     `);
 
     this.stmtGetQueue = this.db.prepare(`
-      SELECT * FROM jobs WHERE status IN ('queued', 'running', 'paused') ORDER BY created_at ASC
+      SELECT * FROM jobs WHERE status IN ('queued', 'running', 'paused', 'stopping') ORDER BY created_at ASC
     `);
 
     this.stmtGetNextQueuedJob = this.db.prepare(`
@@ -89,7 +89,7 @@ class JobManager {
     `);
 
     this.stmtGetInterruptedJobs = this.db.prepare(`
-      SELECT * FROM jobs WHERE status = 'running'
+      SELECT * FROM jobs WHERE status IN ('running', 'stopping')
     `);
 
     this.stmtCancelJob = this.db.prepare(`

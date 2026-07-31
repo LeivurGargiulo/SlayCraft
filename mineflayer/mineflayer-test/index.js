@@ -55,14 +55,11 @@ function createBot() {
   const jobManager = new JobManager(DB_PATH)
   const executionEngine = new ExecutionEngine(bot, jobManager)
 
-  // Shared with commands.js: which job is currently running (for `!bot
-  // status` with no id, and as the target of `!bot stop`), and whether a
-  // stop has been requested for it.
-  //
-  // ponytail: stopRequested is plumbed through but ExecutionEngine.runJob
-  // never reads it — see the flatten-bot task-4 report for why this is a
-  // known gap rather than a silent workaround in executionEngine.js.
-  const jobState = { currentJobId: null, stopRequested: false }
+  // Shared with commands.js: which job is currently running, for `!bot
+  // status` with no id and as the target of `!bot stop` (which sets the
+  // job's own status to 'stopping' via jobManager - ExecutionEngine.runJob
+  // checks for that between actions and exits early).
+  const jobState = { currentJobId: null }
 
   let processing = false
 
@@ -77,7 +74,6 @@ function createBot() {
       while (job) {
         jobManager.markRunning(job.id)
         jobState.currentJobId = job.id
-        jobState.stopRequested = false
         try {
           await executionEngine.runJob(job.id)
         } catch (err) {
