@@ -7,6 +7,7 @@ import type { Task, TaskPriority, TaskStatus } from '../api/types';
 import Card from '../components/Card';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
+import PriorityBadge from '../components/PriorityBadge';
 
 const STATUSES: TaskStatus[] = ['todo', 'in_progress', 'blocked', 'done'];
 const PRIORITY_LABEL: Record<TaskPriority, string> = { low: 'Baja', med: 'Media', high: 'Alta' };
@@ -95,7 +96,7 @@ export default function Tareas() {
                 <div className="font-medium">{t.title}</div>
                 <div className="mt-1 flex gap-2 text-xs text-slate-400">
                   <StatusBadge status={t.status} />
-                  <span>Prioridad: {PRIORITY_LABEL[t.priority]}</span>
+                  <PriorityBadge priority={t.priority} />
                   {t.due_date && <span>Vence: {t.due_date}</span>}
                   {t.assignees.length > 0 && <span>Asignada a: {t.assignees.map((a) => a.minecraft_name).join(', ')}</span>}
                 </div>
