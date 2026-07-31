@@ -26,7 +26,11 @@ export function useLogout() {
 
 // --- tasks ---
 export function useTasks() {
-  return useQuery({ queryKey: ['tasks'], queryFn: () => apiFetch<{ tasks: Task[] }>('/tasks') });
+  return useQuery({
+    queryKey: ['tasks'],
+    queryFn: () => apiFetch<{ tasks: Task[] }>('/tasks'),
+    refetchInterval: 15_000,
+  });
 }
 export function useCreateTask() {
   const qc = useQueryClient();
@@ -76,7 +80,11 @@ export function useDeleteSubtask() {
 
 // --- players (registry) ---
 export function usePlayers() {
-  return useQuery({ queryKey: ['players'], queryFn: () => apiFetch<{ players: Player[] }>('/players') });
+  return useQuery({
+    queryKey: ['players'],
+    queryFn: () => apiFetch<{ players: Player[] }>('/players'),
+    refetchInterval: 30_000,
+  });
 }
 export function useCreatePlayer() {
   const qc = useQueryClient();
@@ -117,6 +125,7 @@ export function useFarmHistory(id: string, range: string) {
   return useQuery({
     queryKey: ['farms', id, 'history', range],
     queryFn: () => apiFetch<{ samples: FarmHistorySample[] }>(`/farms/${id}/history?range=${range}`),
+    refetchInterval: 30_000,
   });
 }
 export function useUpdateFarmMetadata() {
@@ -143,7 +152,11 @@ export function usePerformance() {
 
 // --- projects ---
 export function useProjects() {
-  return useQuery({ queryKey: ['projects'], queryFn: () => apiFetch<{ projects: Project[] }>('/projects') });
+  return useQuery({
+    queryKey: ['projects'],
+    queryFn: () => apiFetch<{ projects: Project[] }>('/projects'),
+    refetchInterval: 30_000,
+  });
 }
 export function useCreateProject() {
   const qc = useQueryClient();
@@ -183,7 +196,11 @@ export function useUploadProjectImage() {
 
 // --- gallery ---
 export function useGallery() {
-  return useQuery({ queryKey: ['gallery'], queryFn: () => apiFetch<{ images: GalleryImage[] }>('/gallery') });
+  return useQuery({
+    queryKey: ['gallery'],
+    queryFn: () => apiFetch<{ images: GalleryImage[] }>('/gallery'),
+    refetchInterval: 30_000,
+  });
 }
 export function useUploadGalleryImage() {
   const qc = useQueryClient();
