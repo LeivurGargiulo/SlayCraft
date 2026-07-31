@@ -87,10 +87,10 @@ test('mixed column (both breaks and places)', () => {
   assert.strictEqual(breaks.length, 4, 'Should have 4 break actions');
   assert.strictEqual(places.length, FILL_SCAN_DEPTH, `Should have ${FILL_SCAN_DEPTH} place actions`);
 
-  // Verify breaks come before places
-  const lastBreakIndex = actions.findIndex(a => a.action === 'break' && actions[actions.indexOf(a) + 1]?.action === 'place');
+  // Verify all breaks come before all places in the array
+  const lastBreakIndex = actions.findLastIndex(a => a.action === 'break');
   const firstPlaceIndex = actions.findIndex(a => a.action === 'place');
-  assert(lastBreakIndex < firstPlaceIndex || lastBreakIndex === -1, 'All breaks should come before places');
+  assert(lastBreakIndex < firstPlaceIndex, 'All breaks should come before all places in the action array');
 });
 
 test('multi-column ordering (deterministic x then z iteration)', () => {
@@ -134,52 +134,34 @@ test('multi-column ordering (deterministic x then z iteration)', () => {
   assert.strictEqual(breaks[3].pos.x, 1, 'Fourth break should be at x=1');
   assert.strictEqual(breaks[3].pos.z, 1, 'Fourth break should be at z=1');
   assert.strictEqual(breaks[3].pos.y, 4, 'Fourth break should be at y=4');
+
+  // Verify all breaks come before all places in the full array
+  const lastBreakIdx = actions.findLastIndex(a => a.action === 'break');
+  const firstPlaceIdx = actions.findIndex(a => a.action === 'place');
+  assert(lastBreakIdx < firstPlaceIdx, 'All breaks should globally precede all places');
 });
 
 test('scan ranges are correct', () => {
-  const targetY = 100;
-  // Test boundary conditions for scan ranges
-  // BREAK range: targetY + BREAK_SCAN_HEIGHT (110) down to targetY + 1 (101)
-  // FILL range: targetY - FILL_SCAN_DEPTH (90) up to targetY - 1 (99)
-  const blockMap = {
-    // Just above targetY + BREAK_SCAN_HEIGHT (111, should NOT break)
-    '0,111,0': { type: 1 },
-    // At targetY + BREAK_SCAN_HEIGHT (110, should break)
-    '0,110,0': { type: 1 },
-    // At targetY + 1 (101, should break - lower boundary inclusive)
-    '0,101,0': { type: 1 },
-    // Just below targetY + 1 (100, should NOT break)
-    '0,100,0': { type: 1 },
-    // Solid blocks between targetY+1 and targetY (to prevent unintended places)
-    '0,99,0': { type: 1 },
-    // Just above targetY - FILL_SCAN_DEPTH (-89, should NOT place)
-    // (no block here, naturally air, but outside the fill range)
-    // At targetY - 1 (99, should place since it's air now)
-    // Actually, 99 already has a block. Let me reorganize...
-  };
+  const targetY = 50;
+  const blockMap = {};
 
-  // Actually, let me rewrite this test more clearly
-  // Use a higher targetY to avoid overlap issues
-  const targetY2 = 50;
-  const blockMap2 = {};
+  // Place blocks to test boundary conditions
+  blockMap['0,61,0'] = { type: 1 }; // Above BREAK range (should NOT break)
+  blockMap['0,60,0'] = { type: 1 }; // At top of BREAK range (should break)
+  blockMap['0,51,0'] = { type: 1 }; // At bottom of BREAK range (should break)
+  blockMap['0,50,0'] = { type: 1 }; // At targetY (should NOT break)
+  blockMap['0,49,0'] = { type: 1 }; // Solid between targetY and fill range
+  blockMap['0,40,0'] = { type: 1 }; // At bottom of FILL range - but needs air
+  blockMap['0,39,0'] = { type: 1 }; // Below FILL range (should NOT place)
 
-  // Place blocks outside the scan ranges
-  blockMap2['0,61,0'] = { type: 1 }; // Above BREAK range (should NOT break)
-  blockMap2['0,60,0'] = { type: 1 }; // At top of BREAK range (should break)
-  blockMap2['0,51,0'] = { type: 1 }; // At bottom of BREAK range (should break)
-  blockMap2['0,50,0'] = { type: 1 }; // At targetY (should NOT break)
-  blockMap2['0,49,0'] = { type: 1 }; // Solid between targetY and fill range
-  blockMap2['0,40,0'] = { type: 1 }; // At bottom of FILL range - but needs air
-  blockMap2['0,39,0'] = { type: 1 }; // Below FILL range (should NOT place)
+  const bot = createFakeBot(blockMap);
+  const actions = compileFlatten(bot, { x1: 0, z1: 0, x2: 0, z2: 0, targetY });
 
-  const bot2 = createFakeBot(blockMap2);
-  const actions2 = compileFlatten(bot2, { x1: 0, z1: 0, x2: 0, z2: 0, targetY: targetY2 });
-
-  const breaks2 = actions2.filter(a => a.action === 'break');
+  const breaks = actions.filter(a => a.action === 'break');
 
   // Should only break at y=60 and y=51 (within range 60 to 51)
-  assert.strictEqual(breaks2.length, 2, 'Should have 2 break actions');
-  const breakYs = breaks2.map(b => b.pos.y).sort((a, b) => b - a);
+  assert.strictEqual(breaks.length, 2, 'Should have 2 break actions');
+  const breakYs = breaks.map(b => b.pos.y).sort((a, b) => b - a);
   assert.deepStrictEqual(breakYs, [60, 51], 'Breaks should be at y=60 and y=51');
 });
 

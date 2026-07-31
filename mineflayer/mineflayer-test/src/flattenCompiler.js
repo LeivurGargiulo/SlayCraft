@@ -23,8 +23,10 @@ const FILL_SCAN_DEPTH = 10;
  * @returns {Array} Array of actions: {action: 'break'|'place', pos: {x,y,z}, blockType?}
  */
 function compileFlatten(bot, { x1, z1, x2, z2, targetY }) {
-  const actions = [];
+  const breaks = [];
+  const places = [];
 
+  // First pass: emit all break actions (top-down, per column)
   // Iterate over columns in deterministic order (x first, then z)
   for (let x = x1; x <= x2; x++) {
     for (let z = z1; z <= z2; z++) {
@@ -33,19 +35,25 @@ function compileFlatten(bot, { x1, z1, x2, z2, targetY }) {
         const block = bot.blockAt({ x, y, z });
         // Non-air blocks are either blocks with type !== 0 or null check
         if (block && block.type !== 0) {
-          actions.push({
+          breaks.push({
             action: 'break',
             pos: { x, y, z }
           });
         }
       }
+    }
+  }
 
+  // Second pass: emit all place actions (bottom-to-top, per column)
+  // Same column iteration order as breaks
+  for (let x = x1; x <= x2; x++) {
+    for (let z = z1; z <= z2; z++) {
       // Place scan: bottom-to-top from targetY - FILL_SCAN_DEPTH to targetY - 1
       for (let y = targetY - FILL_SCAN_DEPTH; y <= targetY - 1; y++) {
         const block = bot.blockAt({ x, y, z });
         // Air blocks are either null or blocks with type === 0
         if (!block || block.type === 0) {
-          actions.push({
+          places.push({
             action: 'place',
             pos: { x, y, z }
           });
@@ -54,7 +62,7 @@ function compileFlatten(bot, { x1, z1, x2, z2, targetY }) {
     }
   }
 
-  return actions;
+  return breaks.concat(places);
 }
 
 module.exports = { compileFlatten, BREAK_SCAN_HEIGHT, FILL_SCAN_DEPTH };
