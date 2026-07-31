@@ -21,6 +21,7 @@ import net.mcfarmmanager.mod.config.FarmConfig;
 import net.mcfarmmanager.mod.config.Position;
 import net.mcfarmmanager.mod.config.StorageConfig;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -33,6 +34,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
@@ -128,7 +130,9 @@ public final class RealFarmDataProvider implements FarmDataProvider {
                         ItemStack stack = container.getItem(slot);
                         if (!stack.isEmpty()) {
                             slotItems.add(new ItemStackInfo(
-                                    BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(), stack.getCount()));
+                                    BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(),
+                                    stack.getCount(),
+                                    shulkerContentsOf(stack)));
                         }
                     }
                     items = slotItems;
@@ -137,6 +141,18 @@ public final class RealFarmDataProvider implements FarmDataProvider {
             }
             return result;
         }, List.of());
+    }
+
+    private static List<ItemStackInfo> shulkerContentsOf(ItemStack stack) {
+        ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
+        if (contents == null) {
+            return null;
+        }
+        List<ItemStackInfo> result = new ArrayList<>();
+        for (ItemStack inner : contents.nonEmptyItems()) {
+            result.add(new ItemStackInfo(BuiltInRegistries.ITEM.getKey(inner.getItem()).toString(), inner.getCount(), null));
+        }
+        return result.isEmpty() ? null : result;
     }
 
     @Override
