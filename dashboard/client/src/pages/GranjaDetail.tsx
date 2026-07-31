@@ -3,10 +3,34 @@ import { useParams, Link } from 'react-router-dom';
 import { useFarm, useFarmHistory, useUpdateFarmMetadata, useUploadFarmImage, useDeleteFarmImage } from '../api/hooks';
 import Card from '../components/Card';
 
+function computeRates(samples: { sampledAt: string; storageCounts: Record<string, number> }[]) {
+  if (samples.length < 2) return {};
+  const first = samples[0];
+  const last = samples[samples.length - 1];
+  const elapsedMinutes = (new Date(last.sampledAt).getTime() - new Date(first.sampledAt).getTime()) / 60_000;
+  if (elapsedMinutes <= 0) return {};
+  const itemIds = new Set([...Object.keys(first.storageCounts), ...Object.keys(last.storageCounts)]);
+  const rates: Record<string, number> = {};
+  for (const itemId of itemIds) {
+    const delta = (last.storageCounts[itemId] ?? 0) - (first.storageCounts[itemId] ?? 0);
+    rates[itemId] = Math.max(0, delta) / elapsedMinutes;
+  }
+  return rates;
+}
+
+function rateStatus(actualPerHour: number, expectedPerHour: number | undefined): 'normal' | 'low' | 'none' | null {
+  if (expectedPerHour === undefined) return null;
+  const ratio = expectedPerHour > 0 ? actualPerHour / expectedPerHour : 0;
+  if (ratio >= 0.9) return 'normal';
+  if (ratio >= 0.1) return 'low';
+  return 'none';
+}
+
 export default function GranjaDetail() {
   const { id } = useParams<{ id: string }>();
   const farm = useFarm(id!);
   const history = useFarmHistory(id!, '24h');
+  const rateHistory = useFarmHistory(id!, '1h');
   const updateMetadata = useUpdateFarmMetadata();
   const uploadImage = useUploadFarmImage();
   const deleteImage = useDeleteFarmImage();
@@ -211,6 +235,31 @@ export default function GranjaDetail() {
             </div>
           );
         })()}
+      </Card>
+
+      <Card>
+        <h2 className="mb-2 font-mono text-slate-200">Producción</h2>
+        {rateHistory.data && rateHistory.data.samples.length >= 2 ? (
+          <div className="space-y-2">
+            {Object.entries(computeRates(rateHistory.data.samples)).map(([itemId, perMinute]) => {
+              const status = rateStatus(perMinute * 60, f.metadata.expected_rates[itemId]);
+              const statusLabel = status === 'normal' ? 'Normal' : status === 'low' ? 'Baja' : status === 'none' ? 'Sin producción' : null;
+              const statusColor =
+                status === 'normal' ? 'text-status-done' : status === 'low' ? 'text-status-progress' : status === 'none' ? 'text-status-blocked' : 'text-slate-500';
+              return (
+                <div key={itemId} className="flex items-center justify-between text-sm">
+                  <span>{itemId.replace(/^minecraft:/, '')}</span>
+                  <span className="flex items-center gap-2 font-mono text-slate-400">
+                    {(perMinute * 60).toFixed(1)}/h · {(perMinute * 1440).toFixed(0)}/día
+                    {statusLabel && <span className={statusColor}>{statusLabel}</span>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">Datos insuficientes.</p>
+        )}
       </Card>
 
       <Card>
