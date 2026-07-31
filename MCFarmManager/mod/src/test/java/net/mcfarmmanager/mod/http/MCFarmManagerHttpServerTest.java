@@ -59,7 +59,7 @@ class MCFarmManagerHttpServerTest {
     void farmDetailReturnsFullShape() throws Exception {
         HttpResponse<String> response = get("/farms/iron");
         assertEquals(200, response.statusCode());
-        assertTrue(response.body().contains("\"fakePlayer\""));
+        assertTrue(response.body().contains("\"occupants\""));
         assertTrue(response.body().contains("\"entities\""));
         assertTrue(response.body().contains("\"storage\""));
     }

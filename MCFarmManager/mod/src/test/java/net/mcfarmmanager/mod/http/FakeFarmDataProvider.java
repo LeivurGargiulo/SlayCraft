@@ -4,8 +4,8 @@ import net.mcfarmmanager.mod.config.FarmConfig;
 import net.mcfarmmanager.mod.config.Position;
 import net.mcfarmmanager.mod.config.StorageConfig;
 import net.mcfarmmanager.mod.data.EntityInfo;
-import net.mcfarmmanager.mod.data.FakePlayerStatus;
 import net.mcfarmmanager.mod.data.ItemStackInfo;
+import net.mcfarmmanager.mod.data.OccupantInfo;
 import net.mcfarmmanager.mod.data.StorageInfo;
 
 import java.util.List;
@@ -26,8 +26,8 @@ class FakeFarmDataProvider implements net.mcfarmmanager.mod.data.FarmDataProvide
     @Override
     public boolean chunkLoaded(FarmConfig farm) { return true; }
     @Override
-    public FakePlayerStatus fakePlayer(FarmConfig farm) {
-        if (farm.fakePlayerName() == null) return null;
-        return new FakePlayerStatus(farm.fakePlayerName(), true, new Position(118, 81, -498));
+    public List<OccupantInfo> occupants(FarmConfig farm) {
+        if (farm.fakePlayerName() == null) return List.of();
+        return List.of(new OccupantInfo(farm.fakePlayerName(), true, new Position(118, 81, -498)));
     }
 }

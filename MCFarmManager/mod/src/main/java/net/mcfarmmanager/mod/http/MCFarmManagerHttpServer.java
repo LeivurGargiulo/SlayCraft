@@ -221,7 +221,6 @@ public final class MCFarmManagerHttpServer {
                 .flatMap(s -> s.items().stream())
                 .mapToInt(item -> item.count())
                 .sum();
-        var fakePlayer = farmData.fakePlayer(farm);
         return new FarmSummary(
                 farm.id(),
                 farm.name(),
@@ -229,7 +228,7 @@ public final class MCFarmManagerHttpServer {
                 farmData.entities(farm).size(),
                 storageItemCount,
                 farmData.chunkLoaded(farm),
-                fakePlayer != null && fakePlayer.online());
+                farmData.occupants(farm).size());
     }
 
     private FarmDetail detail(FarmConfig farm) {
@@ -239,7 +238,7 @@ public final class MCFarmManagerHttpServer {
                 farm.dimension(),
                 farm.anchor(),
                 farmData.chunkLoaded(farm),
-                farmData.fakePlayer(farm),
+                farmData.occupants(farm),
                 farmData.entities(farm),
                 farmData.storage(farm));
     }
