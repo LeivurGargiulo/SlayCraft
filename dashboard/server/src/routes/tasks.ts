@@ -31,6 +31,8 @@ interface TaskRow {
   due_date: string | null;
   farm_id: string | null;
   project_id: number | null;
+  completed_at: string | null;
+  archived: number;
   created_at: string;
   updated_at: string;
 }
@@ -51,7 +53,14 @@ function setAssignees(db: Database.Database, taskId: number, playerIds: number[]
 
 export function registerTaskRoutes(app: FastifyInstance, db: Database.Database) {
   app.get('/api/tasks', async () => {
-    const tasks = db.prepare('SELECT * FROM tasks ORDER BY (due_date IS NULL), due_date ASC').all() as TaskRow[];
+    db.prepare(
+      `UPDATE tasks SET archived = 1
+       WHERE status = 'done' AND archived = 0 AND completed_at IS NOT NULL
+         AND completed_at <= datetime('now', '-3 days')`
+    ).run();
+    const tasks = db
+      .prepare("SELECT * FROM tasks WHERE archived = 0 ORDER BY (due_date IS NULL), due_date ASC")
+      .all() as TaskRow[];
     return { tasks: tasks.map((t) => hydrateTask(db, t)) };
   });
 
@@ -88,10 +97,20 @@ export function registerTaskRoutes(app: FastifyInstance, db: Database.Database) 
     const existing = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as TaskRow | undefined;
     if (!existing) return reply.code(404).send({ error: 'Tarea no encontrada' });
     const body = taskInput.partial().parse(req.body);
-    const merged = { ...existing, ...body, id };
+    const nextStatus = body.status ?? existing.status;
+    let completed_at = existing.completed_at;
+    let archived = existing.archived;
+    if (nextStatus === 'done' && existing.status !== 'done') {
+      completed_at = new Date().toISOString();
+    } else if (nextStatus !== 'done' && existing.status === 'done') {
+      completed_at = null;
+      archived = 0;
+    }
+    const merged = { ...existing, ...body, id, completed_at, archived };
     db.prepare(
       `UPDATE tasks SET title=@title, description=@description, status=@status, priority=@priority,
-        due_date=@due_date, farm_id=@farm_id, project_id=@project_id, updated_at=datetime('now')
+        due_date=@due_date, farm_id=@farm_id, project_id=@project_id, completed_at=@completed_at,
+        archived=@archived, updated_at=datetime('now')
        WHERE id=@id`
     ).run(merged);
     if (body.assignee_ids) setAssignees(db, id, body.assignee_ids);
