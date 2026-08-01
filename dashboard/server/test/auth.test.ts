@@ -29,6 +29,14 @@ test('login then /api/me succeeds; logout then /api/me fails again', async () =>
   assert.equal(meAfter.statusCode, 401);
 });
 
+test('POST /api/logout succeeds with no content-type header and no body (matches what a bodyless client request looks like)', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  const res = await app.inject({ method: 'POST', url: '/api/logout', headers: { cookie } });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), { ok: true });
+});
+
 test('wrong password is rejected', async () => {
   const { app, db } = makeApp();
   db.prepare('INSERT INTO users (id, password_hash) VALUES (1, ?)').run(hashPassword('right'));
