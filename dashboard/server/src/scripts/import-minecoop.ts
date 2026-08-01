@@ -112,6 +112,7 @@ export function importTareas(db: Database.Database, tareas: MinecoopTarea[], pro
     playerIdByName.set(row.minecraft_name, row.id);
   }
 
+  const findExisting = db.prepare('SELECT id FROM tasks WHERE title = ?');
   const insertTask = db.prepare(
     `INSERT INTO tasks (title, description, status, priority, farm_id, project_id)
      VALUES (@title, @description, @status, @priority, @farm_id, @project_id)`
@@ -120,6 +121,8 @@ export function importTareas(db: Database.Database, tareas: MinecoopTarea[], pro
   const insertAssignee = db.prepare('INSERT INTO task_assignees (task_id, player_id) VALUES (?, ?)');
 
   for (const tarea of tareas) {
+    if (findExisting.get(tarea.title)) continue;
+
     const projectSlug = tarea.proyectos?.[0];
     const projectId = projectSlug ? projectIdBySlug.get(projectSlug) ?? null : null;
     const farmId = !projectId && tarea.granjas?.[0] ? tarea.granjas[0] : null;

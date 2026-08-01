@@ -2,147 +2,159 @@
   "master": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Fix Overview needsAttention filter to high-priority only",
         "description": "Change Overview.tsx to filter 'Tareas que necesitan atención' by priority === 'high' only, removing blocked and overdue conditions.",
         "details": "Edit `dashboard/client/src/pages/Overview.tsx` line 17-19. Replace the compound filter `(t.status !== 'done' && (t.status === 'blocked' || t.priority === 'high' || (t.due_date && t.due_date < today)))` with `(t.status !== 'done' && t.priority === 'high')`. Keep the existing `slice(0, 5)` display cap. No backend changes.",
         "testStrategy": "Manual verification in browser: navigate to Overview, confirm the 'Tareas que necesitan atención' section only shows tasks with priority='high' and status != 'done', excluding blocked/overdue tasks regardless of priority.",
         "priority": "medium",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:07.976Z"
       },
       {
-        "id": 2,
+        "id": "2",
         "title": "Add farm_metadata.manual column for non-24/7 farms",
         "description": "Add a boolean 'manual' column to farm_metadata table to mark farms that aren't expected to run continuously.",
         "details": "1. Edit `dashboard/server/src/schema.sql`: add `manual INTEGER NOT NULL DEFAULT 0` to the CREATE TABLE farm_metadata statement after the `coordinates` column. 2. Apply migration: open the existing DB (data/dashboard.sqlite) and run `ALTER TABLE farm_metadata ADD COLUMN manual INTEGER NOT NULL DEFAULT 0;`. Use better-sqlite3 prepare/run from a migration script or manual sqlite3 CLI. 3. No data seeding needed; all existing farms default to manual=0 (not manual).",
         "testStrategy": "Connect to data/dashboard.sqlite with sqlite3 CLI, run `.schema farm_metadata` and confirm the manual column exists with type INTEGER NOT NULL DEFAULT 0. Insert a test row with manual=1 and verify it persists.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:07.980Z"
       },
       {
-        "id": 3,
+        "id": "3",
         "title": "Update farms.ts getMetadata and PATCH handler for manual field",
         "description": "Extend server-side farm metadata routes to read/write the manual boolean.",
         "details": "Edit `dashboard/server/src/routes/farms.ts`: 1. In `getMetadata` function (line 19-29), add `manual: boolean` to the returned object: read from `row?.manual ?? 0` and convert to boolean `(row?.manual ?? 0) === 1`. Update FarmMetadataRow interface to include `manual: number | null;`. 2. In `metadataSchema` (line 62-67), add `manual: z.boolean().optional()`. 3. In `app.patch('/api/farms/:id/metadata')` handler (line 141-150), extend the INSERT statement to include the manual column and the corresponding `body.manual ? 1 : 0` value in the run() args. Update the ON CONFLICT SET clause to include `manual = excluded.manual`.",
         "testStrategy": "Write a server test in `test/farms.test.ts`: PATCH `/api/farms/{id}/metadata` with `{ manual: true }`, then GET the farm summary and assert `metadata.manual === true`. Repeat with `false`. Verify existing farms without the field default to `false`.",
         "priority": "high",
         "dependencies": [
-          2
+          "2"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:07.983Z"
       },
       {
-        "id": 4,
+        "id": "4",
         "title": "Update client FarmSummary type for manual field",
         "description": "Add manual: boolean to the FarmSummary.metadata type definition.",
         "details": "Edit `dashboard/client/src/api/types.ts` line 58. Change the metadata property from `{ notes: string | null; tags: string[]; coordinates: string | null; expected_rates: Record<string, number> }` to `{ notes: string | null; tags: string[]; coordinates: string | null; expected_rates: Record<string, number>; manual: boolean }`. No runtime changes, TypeScript type only.",
         "testStrategy": "Run `npm run build` in `dashboard/client`. Confirm no TypeScript errors. Verify the type is used correctly in Overview.tsx (next task) by checking that accessing `f.metadata.manual` doesn't raise a type error.",
         "priority": "high",
         "dependencies": [
-          3
+          "3"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:07.986Z"
       },
       {
-        "id": 5,
+        "id": "5",
         "title": "Add manual farm checkbox to GranjaDetail config form",
         "description": "Add a checkbox in the GranjaDetail.tsx config form to toggle the manual flag, saved with the rest of farm metadata.",
         "details": "Edit `dashboard/client/src/pages/GranjaDetail.tsx`. Locate the metadata config form (likely near the notes/tags inputs). Add a checkbox input: `<label><input type=\"checkbox\" checked={config.manual} onChange={(e) => setConfig({...config, manual: e.target.checked})} /> Granja manual (no 24/7)</label>`. Ensure `config` state includes the `manual` field (initialize from `farm.metadata.manual`). When saving (PATCH `/api/farms/{id}/metadata`), include `manual: config.manual` in the request body.",
         "testStrategy": "Manual browser test: navigate to any farm detail page, toggle the 'Granja manual (no 24/7)' checkbox, save the config, refresh the page, and confirm the checkbox state persists. Verify the PATCH request in devtools Network tab includes the manual field.",
         "priority": "medium",
         "dependencies": [
-          4
+          "4"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:07.988Z"
       },
       {
-        "id": 6,
+        "id": "6",
         "title": "Update Overview flaggedFarms to respect manual toggle",
         "description": "Modify Overview.tsx flaggedFarms filter so manual farms are not flagged for being offline, but are still flagged for storage near-full.",
         "details": "Edit `dashboard/client/src/pages/Overview.tsx` line 21-23. Replace the filter logic `(f) => !f.online || (f.storageCapacity > 0 && f.storageItemCount > 0.9 * f.storageCapacity)` with `(f) => (!f.metadata.manual && !f.online) || (f.storageCapacity > 0 && f.storageItemCount > 0.9 * f.storageCapacity)`. This way, a farm is flagged if: (not manual AND not producing) OR (storage > 90% capacity).",
         "testStrategy": "Manual browser test: mark a farm as manual in GranjaDetail, verify it disappears from 'Granjas que requieren revisión' if it was flagged only for being offline. If a manual farm has storage > 90%, confirm it still appears in the flagged list. Test with a non-manual offline farm and confirm it remains flagged.",
         "priority": "medium",
         "dependencies": [
-          5
+          "5"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:07.990Z"
       },
       {
-        "id": 7,
+        "id": "7",
         "title": "Remove hover:border-gold from Granjas.tsx Card",
         "description": "Remove the redundant Tailwind hover class from Granjas.tsx card usage to fix stuck hover glow.",
         "details": "Edit `dashboard/client/src/pages/Granjas.tsx` line 58. Remove `hover:border-gold` from the className prop passed to `<Card>`. The line should change from `className=\"hover:border-gold\"` to `className=\"\"` (or omit className entirely if it becomes empty). Card's framer-motion whileHover remains as the sole hover mechanism.",
         "testStrategy": "Manual browser test: navigate to /granjas, hover over a farm card, then move the mouse away. Confirm the gold border animates in on hover and animates out on mouse leave without getting stuck. Verify the same behavior on multiple cards.",
         "priority": "low",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:07.993Z"
       },
       {
-        "id": 8,
+        "id": "8",
         "title": "Remove hover:border-gold from Proyectos.tsx Card",
         "description": "Remove the redundant Tailwind hover class from Proyectos.tsx card usage to fix stuck hover glow.",
         "details": "Edit `dashboard/client/src/pages/Proyectos.tsx`. Locate the Card component usage in the map over projects (similar to Granjas.tsx). Remove `hover:border-gold` from the className prop. After the change, Card's whileHover animation is the only hover mechanism.",
         "testStrategy": "Manual browser test: navigate to /proyectos, hover over a project card, then move the mouse away. Confirm the gold border animates in on hover and animates out on mouse leave without getting stuck.",
         "priority": "low",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:07.995Z"
       },
       {
-        "id": 9,
+        "id": "9",
         "title": "Add cover photo to Granjas cards",
         "description": "Display the first farm image as a cover photo on Granjas.tsx cards, matching the Proyectos card style.",
         "details": "Edit `dashboard/client/src/pages/Granjas.tsx` card rendering (line 56-75). Add the image display block before the farm name and status badge: `{f.images[0] ? (<img src={`/uploads/${f.images[0].path}`} alt={f.name} className=\"mb-2 h-32 w-full rounded object-cover\" />) : (<div className=\"mb-2 flex h-32 w-full items-center justify-center rounded bg-base text-slate-600\">Sin imagen</div>)}`. Mirror the exact structure from Proyectos.tsx. The `images` array is already present in `FarmSummary` per the server's GET /api/farms response (line 91 of farms.ts).",
         "testStrategy": "Manual browser test: navigate to /granjas. For farms with at least one uploaded image, confirm the first image appears as a 128px tall cover photo at the top of the card. For farms with no images, confirm a 'Sin imagen' placeholder is shown. Verify images are cropped correctly (object-cover) and don't distort.",
         "priority": "low",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:07.997Z"
       },
       {
-        "id": 10,
+        "id": "10",
         "title": "Exclude online players from actividad sections in Jugadores",
         "description": "Fix Jugadores.tsx to prevent duplicate player listings by excluding live players from actividad groups.",
         "details": "Edit `dashboard/client/src/pages/Jugadores.tsx` line 29-30. Change the `byActividad` function from `.filter((p) => p.actividad === actividad)` to `.filter((p) => p.actividad === actividad && !liveNames.has(p.minecraft_name))`. This ensures online players appear only under 'En línea' and not again under their actividad section. The sort and liveNames.has logic are already in place.",
         "testStrategy": "Manual browser test: have at least one player online. Navigate to /jugadores. Confirm the online player appears under 'En línea' and does NOT appear under their actividad section (activo/ocasional/inactivo). Verify offline players still appear in their respective actividad sections. Count totals to ensure no player is listed twice.",
         "priority": "medium",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:08.000Z"
       },
       {
-        "id": 11,
+        "id": "11",
         "title": "Diagnose and fix logout button not working",
         "description": "Investigate why clicking 'Cerrar sesión' doesn't log out the user and apply the fix based on root cause.",
         "details": "1. Reproduce in browser: open devtools Network tab, click 'Cerrar sesión' in Sidebar.tsx (line 45). 2. Verify POST /api/logout fires and returns 200. 3. Check if the session cookie is cleared in Application > Cookies. 4. Confirm the ['me'] query is invalidated and refetches (check useLogout mutation in hooks, should call queryClient.invalidateQueries(['me'])). 5. Verify RequireAuth re-renders and redirects to /login on 401 from the refetched me query. If the request doesn't fire: check the onClick handler wiring. If the cookie doesn't clear: check server-side /api/logout route in routes/auth.ts (should call reply.clearCookie). If the query doesn't refetch: check the onSuccess callback in the useLogout mutation. Apply the fix to the specific failure point: handler, server route, or invalidation logic.",
         "testStrategy": "Manual browser test: log in, click 'Cerrar sesión', confirm immediate redirect to /login. Verify in devtools that POST /api/logout fired with 200 response, the session cookie was cleared, and the ['me'] query refetched with a 401 response. Attempt to navigate back to a protected route and confirm redirect to /login persists.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:08.002Z"
       },
       {
-        "id": 12,
+        "id": "12",
         "title": "Make import-minecoop.ts idempotent for jugadores import",
         "description": "Update importJugadores to skip duplicate inserts, making it safe to re-run the import script.",
         "details": "Edit `dashboard/server/src/scripts/import-minecoop.ts` line 15-21. Change the INSERT statement from `INSERT INTO players (minecraft_name, actividad) VALUES (?, ?) ON CONFLICT(minecraft_name) DO UPDATE SET actividad = excluded.actividad` to `INSERT INTO players (minecraft_name, actividad) VALUES (?, ?) ON CONFLICT(minecraft_name) DO NOTHING`. This prevents updating existing actividad on re-run; only new players are inserted. Alternatively, check for existence before insert: `const existing = db.prepare('SELECT id FROM players WHERE minecraft_name = ?').get(j.username); if (!existing) insert.run(...);`. The DO NOTHING approach is simpler and matches the proyectos import pattern.",
         "testStrategy": "Run `npm run import-minecoop` twice in sequence. After the first run, count players (`SELECT COUNT(*) FROM players`). After the second run, verify the count is unchanged and no errors are logged. Manually inspect a few player rows to confirm actividad values were not overwritten.",
         "priority": "low",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:08.005Z"
       },
       {
-        "id": 13,
+        "id": "13",
         "title": "Make import-minecoop.ts idempotent for tareas import",
         "description": "Update importTareas to skip duplicate task inserts, making it safe to re-run the import script.",
         "details": "Edit `dashboard/server/src/scripts/import-minecoop.ts` line 109-146. Before inserting each task, check if a task with the same title already exists for the same project_id or farm_id: `const existing = db.prepare('SELECT id FROM tasks WHERE title = ? AND (project_id IS ? OR farm_id IS ?)').get(tarea.title, projectId, farmId); if (existing) continue;`. If found, skip the task and its subtasks/assignees. Alternatively, enforce uniqueness via a unique constraint on (title, project_id, farm_id) in schema.sql and handle ON CONFLICT DO NOTHING, but the manual check is safer given existing data.",
@@ -153,43 +165,50 @@
         "subtasks": []
       },
       {
-        "id": 14,
+        "id": "14",
         "title": "Fix path traversal vulnerability in buildSchematic.js",
         "description": "Sanitize sourcePath input to prevent directory traversal attacks in buildSchematic.js compile function.",
         "details": "Edit `mineflayer/mineflayer-agent/src/tools/buildSchematic.js` line 16. Before calling loadLitematic or loadSchem, validate that sourcePath does not contain `..` or absolute path indicators. Use Node's path.resolve and path.relative to ensure the resolved path is within an allowed directory (e.g., a schematics/ folder). Example: `const allowedDir = path.resolve(__dirname, '../../schematics'); const resolved = path.resolve(allowedDir, sourcePath); if (!resolved.startsWith(allowedDir)) throw new Error('Invalid sourcePath');`. Apply the same to schemLoader.js and litematicLoader.js if they accept user-controlled paths.",
         "testStrategy": "Write a test in `test/tools/buildSchematic.test.js`: call compile with `sourcePath: '../../etc/passwd'` and assert it throws an error. Call with a valid path like `sourcePath: 'test.litematic'` and assert it succeeds. Verify resolved paths are logged or checked in debug mode.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "cancelled",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:10.355Z"
       },
       {
-        "id": 15,
+        "id": "15",
         "title": "Fix negative Litematica Size offset bug",
         "description": "Correct the Litematica loader to handle negative Size offsets correctly when computing block positions.",
         "details": "Edit `mineflayer/mineflayer-agent/src/schematics/litematicLoader.js`. Review the block position calculation logic (likely in a loop over regions and blocks). Litematica NBT structure stores Size (width, height, length) and an offset vector that can be negative. Ensure positions are computed as `worldPos = regionOffset + blockIndexPos + sizeOffset`, accounting for negative sizeOffset values. If the current code assumes non-negative offsets, update the arithmetic. Consult Litematica spec or existing parsers (e.g., litemapy) for reference.",
         "testStrategy": "Create a test Litematica file with a negative Size offset (use a known structure or generate via `test/fixtures/generateLitematicFixture.js` with negative offset). Load it via loadLitematic and verify block positions match the expected coordinates. Compare output against a reference Litematica loader (e.g., Python litemapy) for the same file.",
         "priority": "medium",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "cancelled",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:10.359Z"
       },
       {
-        "id": 16,
+        "id": "16",
         "title": "Preserve blockstate and orientation on rotate in schematics",
         "description": "Update the rotate function in buildSchematic.js to preserve block state properties (facing, orientation, etc.) when rotating structures.",
         "details": "Edit `mineflayer/mineflayer-agent/src/tools/buildSchematic.js` line 6-14. The current rotate function only transforms x/z coordinates. Extend it to also transform blockstate properties. For blocks with a 'facing' or 'axis' property, apply the rotation transformation: e.g., facing=north at 90° rotation becomes facing=west. Maintain a mapping of directional properties per block type (or parse from block state). Update the compile function (line 21-30) to return `{ action: 'place', x, y, z, block_type, blockstate: rotatedState }` instead of just block_type.",
         "testStrategy": "Create a .schem with directional blocks (stairs, doors, logs with axis=x). Compile with rotation=90. Verify the output blockstate includes the rotated facing/axis. Place the blocks in a test world and confirm they face the correct direction post-rotation. Compare against manual rotation in Minecraft or a schematic editor.",
         "priority": "medium",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "cancelled",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T13:59:10.361Z"
       }
     ],
     "metadata": {
-      "created": "2026-08-01T04:26:08.451Z",
-      "updated": "2026-08-01T04:26:08.451Z",
-      "description": "Tasks for master context"
+      "version": "1.0.0",
+      "lastModified": "2026-08-01T13:59:10.361Z",
+      "taskCount": 16,
+      "completedCount": 12,
+      "tags": [
+        "master"
+      ]
     }
   }
 }

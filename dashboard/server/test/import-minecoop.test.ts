@@ -157,3 +157,16 @@ test('importTareas maps status/priority, links project over farm, and imports su
     .all(kelpTaskId.id);
   assert.deepEqual(assignees, [{ minecraft_name: 'SlayerL99' }]);
 });
+
+test('importTareas is idempotent: re-running with the same input does not duplicate tasks', () => {
+  const db = openDb(':memory:');
+  const tareas = [
+    { id: 'catedral', title: 'Construir Catedral', status: 'en-progreso' as const, priority: 4 },
+  ];
+
+  importTareas(db, tareas, new Map());
+  importTareas(db, tareas, new Map());
+
+  const count = db.prepare('SELECT COUNT(*) AS n FROM tasks WHERE title = ?').get('Construir Catedral') as any;
+  assert.equal(count.n, 1);
+});
