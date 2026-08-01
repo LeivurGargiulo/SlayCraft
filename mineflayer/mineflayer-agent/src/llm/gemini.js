@@ -1,10 +1,37 @@
 const { GoogleGenAI } = require('@google/genai');
 
+// Gemini's function-declaration Schema proto stores `enum` as repeated
+// string regardless of the property's declared `type`, so numeric enums
+// must be sent as strings and coerced back after the call returns.
+function stringifyEnums(schema) {
+  if (!schema || typeof schema !== 'object') return schema;
+  const out = { ...schema };
+  if (Array.isArray(out.enum)) out.enum = out.enum.map(String);
+  if (out.properties) {
+    out.properties = Object.fromEntries(
+      Object.entries(out.properties).map(([k, v]) => [k, stringifyEnums(v)])
+    );
+  }
+  return out;
+}
+
+function coerceEnumArgs(args, argsSchema) {
+  if (!argsSchema || !argsSchema.properties) return args;
+  const out = { ...args };
+  for (const [key, propSchema] of Object.entries(argsSchema.properties)) {
+    const isNumeric = propSchema.type === 'integer' || propSchema.type === 'number';
+    if (propSchema.enum && isNumeric && typeof out[key] === 'string') {
+      out[key] = Number(out[key]);
+    }
+  }
+  return out;
+}
+
 function toGeminiFunctionDeclarations(toolSchemas) {
   return toolSchemas.map((t) => ({
     name: t.name,
     description: t.description,
-    parameters: t.argsSchema
+    parameters: stringifyEnums(t.argsSchema)
   }));
 }
 
@@ -28,7 +55,8 @@ async function plan(taskText, worldContext, toolSchemas, { client } = {}) {
   if (!call) {
     return { error: 'gemini did not return a tool call' };
   }
-  return { tool: call.name, args: call.args };
+  const matchingSchema = toolSchemas.find((t) => t.name === call.name);
+  return { tool: call.name, args: coerceEnumArgs(call.args, matchingSchema && matchingSchema.argsSchema) };
 }
 
 module.exports = { plan };
