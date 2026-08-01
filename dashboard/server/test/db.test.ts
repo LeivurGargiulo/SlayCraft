@@ -1,5 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import Database from 'better-sqlite3';
 import { openDb } from '../src/db.js';
 
 test('openDb applies schema and enables WAL + foreign keys', () => {
@@ -66,15 +70,105 @@ test('tasks table has no blocked status option and gained completed_at/archived 
   });
 });
 
-test('existing blocked tasks are migrated to todo on schema upgrade', () => {
-  const db = openDb(':memory:');
-  // simulate a pre-migration row that predates the CHECK tightening by inserting directly
-  // (the CHECK constraint already blocks 'blocked' post-migration, so this test instead
-  // verifies the migration path used real production data: insert as 'todo', flip via raw
-  // SQL bypassing the app layer is not possible once CHECK is tight — so we assert the
-  // migration logic exists by checking no row can ever hold 'blocked' after openDb ran twice)
-  db.prepare("INSERT INTO tasks (title, status) VALUES ('test', 'todo')").run();
-  assert.throws(() => db.prepare("UPDATE tasks SET status='blocked' WHERE id = 1").run());
+test('migration: blocked tasks converted to todo, FKs preserved in populated DB', () => {
+  // Create a temp DB with old schema containing 'blocked' status and FK-dependent rows
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'db-migration-test-'));
+  const dbPath = path.join(tmpDir, 'test.db');
+  try {
+    // Create old-schema DB with blocked status allowed
+    const oldDb = new Database(dbPath);
+    oldDb.pragma('foreign_keys = ON');
+
+    // Create tables with old schema (includes 'blocked' in CHECK)
+    oldDb.exec(`
+      CREATE TABLE IF NOT EXISTS players (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        minecraft_name TEXT NOT NULL UNIQUE,
+        note TEXT,
+        actividad TEXT NOT NULL DEFAULT 'ocasional' CHECK (actividad IN ('activo','ocasional','inactivo')),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo','in_progress','blocked','done')),
+        priority TEXT NOT NULL DEFAULT 'med' CHECK (priority IN ('low','med','high')),
+        due_date TEXT,
+        farm_id TEXT,
+        project_id INTEGER,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS subtasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        done INTEGER NOT NULL DEFAULT 0,
+        sort_order INTEGER NOT NULL DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS task_assignees (
+        task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        PRIMARY KEY (task_id, player_id)
+      );
+    `);
+
+    // Insert test data: blocked task with child rows
+    oldDb.prepare("INSERT INTO players (id, minecraft_name) VALUES (1, 'testplayer')").run();
+    oldDb.prepare("INSERT INTO tasks (id, title, status) VALUES (1, 'blocked task', 'blocked')").run();
+    oldDb.prepare("INSERT INTO tasks (id, title, status) VALUES (2, 'todo task', 'todo')").run();
+    oldDb.prepare("INSERT INTO subtasks (id, task_id, title) VALUES (1, 1, 'subtask of blocked')").run();
+    oldDb.prepare("INSERT INTO task_assignees (task_id, player_id) VALUES (1, 1)").run();
+
+    oldDb.close();
+
+    // Trigger migration by opening with new schema
+    const newDb = openDb(dbPath);
+
+    // Verify: blocked task migrated to todo
+    const blockedTask = newDb.prepare("SELECT status FROM tasks WHERE id = 1").get() as { status: string };
+    assert.equal(blockedTask.status, 'todo', 'blocked task should be converted to todo');
+
+    // Verify: existing todo task unchanged
+    const todoTask = newDb.prepare("SELECT status FROM tasks WHERE id = 2").get() as { status: string };
+    assert.equal(todoTask.status, 'todo', 'existing todo task should remain unchanged');
+
+    // Verify: subtask still exists and FK is intact
+    const subtask = newDb.prepare("SELECT task_id FROM subtasks WHERE id = 1").get() as { task_id: number };
+    assert.equal(subtask.task_id, 1, 'subtask should still reference task 1');
+
+    // Verify: task_assignees row still exists
+    const assignee = newDb.prepare("SELECT task_id, player_id FROM task_assignees WHERE task_id = 1 AND player_id = 1").get();
+    assert.ok(assignee, 'task_assignee should still exist');
+
+    // Verify: FKs in subtasks point to tasks (not tasks_old)
+    const subtasksFkList = newDb.prepare("PRAGMA foreign_key_list('subtasks')").all() as Array<{ table: string }>;
+    const tasksFK = subtasksFkList.find(fk => fk.table === 'tasks');
+    assert.ok(tasksFK, 'subtasks should have FK to tasks table (not tasks_old)');
+
+    // Verify: FKs in task_assignees point to tasks (not tasks_old)
+    const assigneeFkList = newDb.prepare("PRAGMA foreign_key_list('task_assignees')").all() as Array<{ table: string }>;
+    const tasksFkInAssignee = assigneeFkList.find(fk => fk.table === 'tasks');
+    assert.ok(tasksFkInAssignee, 'task_assignees should have FK to tasks table (not tasks_old)');
+
+    // Verify: no FK constraint violations
+    const violations = newDb.prepare("PRAGMA foreign_key_check").all();
+    assert.equal(violations.length, 0, 'no FK violations should exist after migration');
+
+    // Verify: cannot insert 'blocked' status after migration
+    assert.throws(() => {
+      newDb.prepare("INSERT INTO tasks (title, status) VALUES ('blocked attempt', 'blocked')").run();
+    }, 'should reject blocked status after migration');
+
+    newDb.close();
+  } finally {
+    // Cleanup
+    fs.rmSync(tmpDir, { recursive: true });
+  }
 });
 
 test('subtask_assignees table exists', () => {
