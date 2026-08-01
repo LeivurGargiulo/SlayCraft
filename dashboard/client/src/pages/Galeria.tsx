@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useGallery, useUploadGalleryImage, useUpdateGalleryImage, useDeleteGalleryImage } from '../api/hooks';
 import ImageZoom from '../components/ImageZoom';
 import FileUploadButton from '../components/FileUploadButton';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function Galeria() {
   const gallery = useGallery();
@@ -10,6 +11,7 @@ export default function Galeria() {
   const deleteImage = useDeleteGalleryImage();
   const fileInput = useRef<HTMLInputElement>(null);
   const [captionDraft, setCaptionDraft] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
   async function onUpload() {
     const file = fileInput.current?.files?.[0];
@@ -55,9 +57,7 @@ export default function Galeria() {
                 className="w-full rounded border border-border bg-base px-2 py-1 text-xs"
               />
               <button
-                onClick={() => {
-                  if (confirm('¿Eliminar esta imagen?')) deleteImage.mutate(img.id);
-                }}
+                onClick={() => setDeleteTarget(img.id)}
                 className="mt-1 text-xs text-status-blocked hover:underline"
               >
                 Eliminar
@@ -67,6 +67,18 @@ export default function Galeria() {
         ))}
         {(gallery.data?.images.length ?? 0) === 0 && <p className="text-sm text-slate-500">La galería está vacía todavía.</p>}
       </div>
+
+      <ConfirmModal
+        open={deleteTarget !== null}
+        title="Eliminar imagen"
+        message="¿Eliminar esta imagen? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget !== null) deleteImage.mutate(deleteTarget);
+          setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

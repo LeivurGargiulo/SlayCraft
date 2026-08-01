@@ -4,6 +4,7 @@ import { useProjects, useUpdateProject, useDeleteProject, useUploadProjectImage,
 import Card from '../components/Card';
 import ImageZoom from '../components/ImageZoom';
 import FileUploadButton from '../components/FileUploadButton';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function ProyectoDetail() {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +15,7 @@ export default function ProyectoDetail() {
   const deleteImage = useDeleteProjectImage();
   const fileInput = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const project = projects.data?.projects.find((p) => p.id === Number(id));
   const [description, setDescription] = useState('');
@@ -41,14 +43,24 @@ export default function ProyectoDetail() {
       <div className="flex items-center justify-between">
         <h1 className="font-mono text-2xl text-gold">{project.name}</h1>
         <button
-          onClick={() => {
-            if (confirm('¿Eliminar este proyecto? Se borrarán todas sus imágenes.')) deleteProject.mutate(project.id);
-          }}
+          onClick={() => setDeleteModalOpen(true)}
           className="text-sm text-status-blocked hover:underline"
         >
           Eliminar proyecto
         </button>
       </div>
+
+      <ConfirmModal
+        open={deleteModalOpen}
+        title="Eliminar proyecto"
+        message="¿Eliminar este proyecto? Se borrarán todas sus imágenes. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        onCancel={() => setDeleteModalOpen(false)}
+        onConfirm={() => {
+          setDeleteModalOpen(false);
+          deleteProject.mutate(project.id);
+        }}
+      />
 
       <Card>
         {editing ? (

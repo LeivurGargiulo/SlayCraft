@@ -5,6 +5,7 @@ import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
 import PlayerSkin from '../components/PlayerSkin';
 import Select from '../components/Select';
+import ConfirmModal from '../components/ConfirmModal';
 
 const ACTIVIDAD_ORDER: Actividad[] = ['activo', 'ocasional', 'inactivo'];
 const ACTIVIDAD_LABELS: Record<Actividad, string> = {
@@ -22,6 +23,7 @@ export default function Jugadores() {
   const deletePlayer = useDeletePlayer();
   const [name, setName] = useState('');
   const [note, setNote] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
   const liveNames = new Set((live.data?.players ?? []).map((p) => p.name));
   const allPlayers = players.data?.players ?? [];
@@ -65,9 +67,7 @@ export default function Jugadores() {
           </div>
         </div>
         <button
-          onClick={() => {
-            if (confirm('¿Eliminar este jugador?')) deletePlayer.mutate(p.id);
-          }}
+          onClick={() => setDeleteTarget(p.id)}
           className="text-sm text-status-blocked hover:underline"
         >
           Eliminar
@@ -126,6 +126,18 @@ export default function Jugadores() {
       })}
 
       {allPlayers.length === 0 && <p className="text-sm text-slate-500">No hay jugadores registrados.</p>}
+
+      <ConfirmModal
+        open={deleteTarget !== null}
+        title="Eliminar jugador"
+        message="¿Eliminar este jugador? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget !== null) deletePlayer.mutate(deleteTarget);
+          setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }
