@@ -185,6 +185,15 @@ export default function GranjaDetail() {
       </Link>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
+          {f.images[0] ? (
+            <img src={`/uploads/${f.images[0].path}`} alt="" className="h-10 w-10 rounded object-cover" />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded bg-base text-slate-600">
+              <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current" aria-hidden="true">
+                <path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm1 2v10h14V7H5Zm2 8 3.5-4.5 2.5 3 3-4L18 15H7Z" />
+              </svg>
+            </div>
+          )}
           <h1 className="font-mono text-2xl text-gold">{f.name}</h1>
           {f.metadata.manual && <span className="rounded bg-base px-2 py-0.5 text-xs text-cyan">Manual</span>}
         </div>
