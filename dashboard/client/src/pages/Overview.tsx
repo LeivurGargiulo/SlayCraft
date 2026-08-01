@@ -13,9 +13,8 @@ export default function Overview() {
   const livePlayers = useLivePlayers();
   const performance = usePerformance();
 
-  const today = new Date().toISOString().slice(0, 10);
   const needsAttention = (tasks.data?.tasks ?? []).filter(
-    (t) => t.status !== 'done' && (t.status === 'blocked' || t.priority === 'high' || (t.due_date && t.due_date < today))
+    (t) => t.status !== 'done' && t.priority === 'high'
   );
 
   const flaggedFarms = (farms.data?.farms ?? []).filter(
