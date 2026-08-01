@@ -38,6 +38,29 @@ export function openDb(dbPath: string): Database.Database {
       db.exec('DROP TABLE task_assignees_old');
     })();
   }
+  // Self-heal: a past rename of `subtasks` (see migration above) caused SQLite to
+  // silently rewrite subtask_assignees's FK clause to reference the now-dropped
+  // `subtasks_old` table on already-deployed DBs. Detect and repair in place.
+  const subtaskAssigneesSql = (
+    db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='subtask_assignees'").get() as { sql: string } | undefined
+  )?.sql ?? '';
+  if (subtaskAssigneesSql.includes('subtasks_old')) {
+    db.transaction(() => {
+      db.exec('ALTER TABLE subtask_assignees RENAME TO subtask_assignees_old');
+      db.exec(`
+        CREATE TABLE subtask_assignees (
+          subtask_id INTEGER NOT NULL REFERENCES subtasks(id) ON DELETE CASCADE,
+          player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+          PRIMARY KEY (subtask_id, player_id)
+        )
+      `);
+      db.exec(`
+        INSERT INTO subtask_assignees (subtask_id, player_id)
+        SELECT subtask_id, player_id FROM subtask_assignees_old
+      `);
+      db.exec('DROP TABLE subtask_assignees_old');
+    })();
+  }
   const taskColumns = db.prepare('PRAGMA table_info(tasks)').all() as Array<{ name: string }>;
   if (!taskColumns.some((c) => c.name === 'completed_at')) {
     db.exec('ALTER TABLE tasks ADD COLUMN completed_at TEXT');

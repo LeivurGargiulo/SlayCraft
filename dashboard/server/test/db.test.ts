@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { openDb } from '../src/db.js';
+import { buildApp } from '../src/app.js';
+import { loginAndGetCookie } from './helpers.js';
 
 test('openDb applies schema and enables WAL + foreign keys', () => {
   const db = openDb(':memory:');
@@ -175,4 +177,68 @@ test('subtask_assignees table exists', () => {
   const db = openDb(':memory:');
   const table = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='subtask_assignees'").get();
   assert.ok(table);
+});
+
+test('migration: subtask_assignees FK corrupted to subtasks_old is self-healed, rows preserved, PATCH works', async () => {
+  // Reproduces the production corruption: subtask_assignees.subtask_id's FK clause
+  // silently rewritten to reference "subtasks_old" by a prior `ALTER TABLE subtasks
+  // RENAME TO subtasks_old` migration, then subtasks_old was dropped.
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'db-subtask-assignees-fk-test-'));
+  const dbPath = path.join(tmpDir, 'test.db');
+  try {
+    // Build a normal DB first (fresh schema, correct FKs).
+    const oldDb = openDb(dbPath);
+    oldDb.pragma('foreign_keys = OFF');
+    oldDb.prepare("INSERT INTO players (id, minecraft_name) VALUES (1, 'testplayer')").run();
+    oldDb.prepare("INSERT INTO tasks (id, title) VALUES (1, 'task with subtask')").run();
+    oldDb.prepare("INSERT INTO subtasks (id, task_id, title) VALUES (1, 1, 'subtask')").run();
+
+    // Manually corrupt subtask_assignees's FK exactly as observed in prod.
+    oldDb.exec('DROP TABLE subtask_assignees');
+    oldDb.exec(`
+      CREATE TABLE subtask_assignees (
+        subtask_id INTEGER NOT NULL REFERENCES "subtasks_old"(id) ON DELETE CASCADE,
+        player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        PRIMARY KEY (subtask_id, player_id)
+      )
+    `);
+    oldDb.prepare('INSERT INTO subtask_assignees (subtask_id, player_id) VALUES (1, 1)').run();
+    oldDb.close();
+
+    // Reopen: this should trigger the self-healing migration.
+    const newDb = openDb(dbPath);
+
+    const sql = (
+      newDb.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='subtask_assignees'").get() as { sql: string }
+    ).sql;
+    assert.ok(!sql.includes('subtasks_old'), 'FK should no longer reference subtasks_old');
+
+    const fkList = newDb.prepare("PRAGMA foreign_key_list('subtask_assignees')").all() as Array<{ table: string }>;
+    const subtasksFk = fkList.find((fk) => fk.table === 'subtasks');
+    assert.ok(subtasksFk, 'subtask_assignees should have FK to subtasks table');
+
+    const preserved = newDb
+      .prepare('SELECT subtask_id, player_id FROM subtask_assignees WHERE subtask_id = 1 AND player_id = 1')
+      .get();
+    assert.ok(preserved, 'existing subtask_assignees row should survive the migration');
+
+    const violations = newDb.prepare('PRAGMA foreign_key_check').all();
+    assert.equal(violations.length, 0, 'no FK violations should exist after migration');
+
+    // Confirm a live PATCH against this DB now succeeds.
+    const uploadsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-test-uploads-'));
+    const app = buildApp(newDb, uploadsDir);
+    const cookie = await loginAndGetCookie(app, newDb);
+    const patch = await app.inject({
+      method: 'PATCH',
+      url: '/api/subtasks/1',
+      headers: { cookie },
+      payload: { assignee_ids: [1] },
+    });
+    assert.equal(patch.statusCode, 200, `expected 200, got ${patch.statusCode}: ${patch.body}`);
+
+    newDb.close();
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true });
+  }
 });
