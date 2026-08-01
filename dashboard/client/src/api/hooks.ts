@@ -161,13 +161,15 @@ export function useUpdateFarmMetadata() {
       tags,
       coordinates,
       expected_rates,
+      manual,
     }: {
       id: string;
       notes?: string | null;
       tags?: string[];
       coordinates?: string | null;
       expected_rates?: Record<string, number>;
-    }) => apiFetch(`/farms/${id}/metadata`, { method: 'PATCH', body: JSON.stringify({ notes, tags, coordinates, expected_rates }) }),
+      manual?: boolean;
+    }) => apiFetch(`/farms/${id}/metadata`, { method: 'PATCH', body: JSON.stringify({ notes, tags, coordinates, expected_rates, manual }) }),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['farms'] });
       qc.invalidateQueries({ queryKey: ['farms', vars.id] });
