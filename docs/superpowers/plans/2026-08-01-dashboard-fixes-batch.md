@@ -1,6 +1,6 @@
 # Dashboard fixes batch Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Ship six independent fixes to the client dashboard: Alta-only task list, manual-farm exemption from the "requiere revisión" flag, a stuck card hover glow, farm cover photos, deduplicated jugadores online/category listing, and a broken logout button.
 
@@ -27,7 +27,7 @@
 - Consumes: `Task.status: TaskStatus`, `Task.priority: TaskPriority` (from `dashboard/client/src/api/types.ts:22-35`), `useTasks()` (from `dashboard/client/src/api/hooks.ts:28-34`) — unchanged.
 - Produces: nothing new; `needsAttention: Task[]` remains the same shape consumed lower in the same file.
 
-- [ ] **Step 1: Change the filter**
+- [x] **Step 1: Change the filter**
 
 In `dashboard/client/src/pages/Overview.tsx`, replace:
 
@@ -48,16 +48,16 @@ with:
 
 Remove the now-unused `today` variable entirely (it was only used by this filter).
 
-- [ ] **Step 2: Build**
+- [x] **Step 2: Build**
 
 Run: `cd dashboard/client && npm run build`
 Expected: no TypeScript errors (confirms `today` isn't referenced elsewhere in the file).
 
-- [ ] **Step 3: Manual verification**
+- [x] **Step 3: Manual verification**
 
 Run `npm run dev` in `dashboard/client` (and the server, or point at the live stack), open `/`, confirm "Tareas que necesitan atención" only lists tasks with priority Alta and status not done. Create a blocked med-priority task and an overdue low-priority task via `/tareas` and confirm neither appears in the Overview list.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add dashboard/client/src/pages/Overview.tsx
@@ -78,7 +78,7 @@ git commit -m "fix(dashboard): show only Alta priority tasks in needs-attention 
 - Produces: `getMetadata(db, farmId)` return type gains `manual: boolean`. `PATCH /api/farms/:id/metadata` request body accepts optional `manual: boolean`. Response `metadata.manual` is `boolean`, defaulting to `false` when never set.
 - Consumed by: Task 3 (client type + UI), Task 4 (Overview flaggedFarms filter).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `dashboard/server/test/farms.test.ts`:
 
@@ -113,12 +113,12 @@ test('metadata manual defaults to false when unset', async () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd dashboard/server && npm test`
 Expected: FAIL — `metadata.manual` is `undefined`, not `true`/`false` (no `manual` column/field exists yet).
 
-- [ ] **Step 3: Add the schema column (fresh-DB path)**
+- [x] **Step 3: Add the schema column (fresh-DB path)**
 
 In `dashboard/server/src/schema.sql`, change:
 
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS farm_metadata (
 
 (Leave `expected_rates` out of this block — it's added via migration only, per the existing file; don't touch that line.)
 
-- [ ] **Step 4: Add the migration (existing-DB path)**
+- [x] **Step 4: Add the migration (existing-DB path)**
 
 In `dashboard/server/src/db.ts`, after the `expected_rates` migration block (line 22-24), add:
 
@@ -155,7 +155,7 @@ In `dashboard/server/src/db.ts`, after the `expected_rates` migration block (lin
   }
 ```
 
-- [ ] **Step 5: Update `getMetadata` and the row interface**
+- [x] **Step 5: Update `getMetadata` and the row interface**
 
 In `dashboard/server/src/routes/farms.ts`, change the `FarmMetadataRow` interface (lines 11-17):
 
@@ -187,7 +187,7 @@ function getMetadata(db: Database.Database, farmId: string) {
 }
 ```
 
-- [ ] **Step 6: Update `metadataSchema` and the PATCH handler**
+- [x] **Step 6: Update `metadataSchema` and the PATCH handler**
 
 Change `metadataSchema` (lines 62-67):
 
@@ -224,12 +224,12 @@ Change the PATCH handler (lines 141-155):
 
 Note this follows the existing full-replace-every-call convention (same as `notes`/`tags`/`coordinates`/`expected_rates`) — the client always sends the complete metadata object on save (see Task 3), so there's no partial-update/preserve-old-value concern.
 
-- [ ] **Step 7: Run tests to verify they pass**
+- [x] **Step 7: Run tests to verify they pass**
 
 Run: `cd dashboard/server && npm test`
 Expected: PASS, all tests including the two new ones and the existing `GET /api/farms merges MCFarmManager data with dashboard metadata` test (its `assert.deepEqual(body.farms[0].metadata, ...)` at line 19 must be updated — see next step).
 
-- [ ] **Step 8: Fix the now-stale metadata shape assertion**
+- [x] **Step 8: Fix the now-stale metadata shape assertion**
 
 In `dashboard/server/test/farms.test.ts`, update the existing assertion (around line 19):
 
@@ -240,7 +240,7 @@ In `dashboard/server/test/farms.test.ts`, update the existing assertion (around 
 Run: `cd dashboard/server && npm test`
 Expected: PASS, full suite green.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add dashboard/server/src/schema.sql dashboard/server/src/db.ts dashboard/server/src/routes/farms.ts dashboard/server/test/farms.test.ts
@@ -260,7 +260,7 @@ git commit -m "feat(dashboard): add manual/24-7 toggle to farm metadata"
 - Consumes: `getMetadata`/PATCH response shape from Task 2 (`metadata.manual: boolean`).
 - Produces: nothing consumed further; this closes out items 2 and (partially, via `flaggedFarms`) the Overview section from item 1's spec area.
 
-- [ ] **Step 1: Add `manual` to the `FarmSummary` metadata type**
+- [x] **Step 1: Add `manual` to the `FarmSummary` metadata type**
 
 In `dashboard/client/src/api/types.ts:58`, change:
 
@@ -274,7 +274,7 @@ to:
   metadata: { notes: string | null; tags: string[]; coordinates: string | null; expected_rates: Record<string, number>; manual: boolean };
 ```
 
-- [ ] **Step 2: Add a `manual` state and wire it into `startEdit`/`saveMeta`**
+- [x] **Step 2: Add a `manual` state and wire it into `startEdit`/`saveMeta`**
 
 In `dashboard/client/src/pages/GranjaDetail.tsx`, add a new state near the other metadata-edit state (after line 111 `const [editingMeta, setEditingMeta] = useState(false);`):
 
@@ -307,7 +307,7 @@ In `saveMeta()` (lines 129-141), add `manual` to the mutation call:
   }
 ```
 
-- [ ] **Step 3: Extend `useUpdateFarmMetadata`'s mutation input type**
+- [x] **Step 3: Extend `useUpdateFarmMetadata`'s mutation input type**
 
 In `dashboard/client/src/api/hooks.ts`, in `useUpdateFarmMetadata` (lines 155-176), add `manual` to the mutationFn parameter type and payload:
 
@@ -338,7 +338,7 @@ export function useUpdateFarmMetadata() {
 }
 ```
 
-- [ ] **Step 4: Add the checkbox to the notes edit block**
+- [x] **Step 4: Add the checkbox to the notes edit block**
 
 In `dashboard/client/src/pages/GranjaDetail.tsx`, `Checkbox` is already imported (line 17). In the `editingMeta` branch (inside the "Notas" `Card`, right after the `coordinates` input around line 227-228, before the "Tasas esperadas" block), add:
 
@@ -350,7 +350,7 @@ In `dashboard/client/src/pages/GranjaDetail.tsx`, `Checkbox` is already imported
               />
 ```
 
-- [ ] **Step 5: Update Overview's flaggedFarms filter**
+- [x] **Step 5: Update Overview's flaggedFarms filter**
 
 In `dashboard/client/src/pages/Overview.tsx:21-24`, change:
 
@@ -368,16 +368,16 @@ to:
   );
 ```
 
-- [ ] **Step 6: Build**
+- [x] **Step 6: Build**
 
 Run: `cd dashboard/client && npm run build`
 Expected: no TypeScript errors.
 
-- [ ] **Step 7: Manual verification**
+- [x] **Step 7: Manual verification**
 
 Start the dev stack, open a Granja detail page, click "Editar" on Notas, toggle "Granja manual", save, reload the page, confirm the toggle stays checked. With a farm that has zero recent production: toggle it manual and confirm it drops off Overview's "Granjas que requieren revisión"; toggle it back off and confirm it reappears. Separately, push a manual farm's storage above 90% capacity (or verify logically) and confirm it *still* flags despite being manual.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add dashboard/client/src/api/types.ts dashboard/client/src/api/hooks.ts dashboard/client/src/pages/GranjaDetail.tsx dashboard/client/src/pages/Overview.tsx
@@ -396,7 +396,7 @@ git commit -m "feat(dashboard): manual farms skip the not-producing review flag"
 - Consumes: `components/Card.tsx`'s existing `whileHover={{ y: -2, borderColor: '#e8b339' }}` behavior — unchanged, becomes the sole hover mechanism.
 - Produces: nothing new.
 
-- [ ] **Step 1: Remove the competing Tailwind hover class in Granjas.tsx**
+- [x] **Step 1: Remove the competing Tailwind hover class in Granjas.tsx**
 
 In `dashboard/client/src/pages/Granjas.tsx:58`, change:
 
@@ -410,7 +410,7 @@ to:
             <Card>
 ```
 
-- [ ] **Step 2: Remove the competing Tailwind hover class in Proyectos.tsx**
+- [x] **Step 2: Remove the competing Tailwind hover class in Proyectos.tsx**
 
 In `dashboard/client/src/pages/Proyectos.tsx:34`, change:
 
@@ -424,16 +424,16 @@ to:
             <Card>
 ```
 
-- [ ] **Step 3: Build**
+- [x] **Step 3: Build**
 
 Run: `cd dashboard/client && npm run build`
 Expected: no TypeScript errors (both are simple prop removals).
 
-- [ ] **Step 4: Manual verification**
+- [x] **Step 4: Manual verification**
 
 Open `/granjas` and `/proyectos` in a real browser. Hover a card, move the mouse off it onto empty space (not onto another card) — confirm the gold border glow fades back out immediately, every time, including after rapid hover in/out and after clicking through to a detail page and back.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add dashboard/client/src/pages/Granjas.tsx dashboard/client/src/pages/Proyectos.tsx
@@ -451,7 +451,7 @@ git commit -m "fix(dashboard): remove duplicate hover mechanism causing stuck ca
 - Consumes: `FarmSummary.images: FarmImage[]` (already returned by `GET /api/farms`, already typed in `api/types.ts:59` — no backend or type change needed).
 - Produces: nothing new.
 
-- [ ] **Step 1: Add the cover image, mirroring Proyectos.tsx**
+- [x] **Step 1: Add the cover image, mirroring Proyectos.tsx**
 
 In `dashboard/client/src/pages/Granjas.tsx`, inside the `farms.data!.farms.map((f) => (...))` block (lines 56-77), change:
 
@@ -482,16 +482,16 @@ to:
 
 (Everything below — the entity/storage line and tags — stays as-is, just now sits below the image block.)
 
-- [ ] **Step 2: Build**
+- [x] **Step 2: Build**
 
 Run: `cd dashboard/client && npm run build`
 Expected: no TypeScript errors.
 
-- [ ] **Step 3: Manual verification**
+- [x] **Step 3: Manual verification**
 
 Open a Granja detail page, upload an image via the existing "Imágenes" card (uses `FileUploadButton`, already wired to `useUploadFarmImage`). Go back to `/granjas`, confirm that farm's card now shows the uploaded image as a cover photo. Confirm farms with no images still show the "Sin imagen" placeholder, matching `/proyectos`' existing behavior exactly.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add dashboard/client/src/pages/Granjas.tsx
@@ -509,7 +509,7 @@ git commit -m "feat(dashboard): show farm cover photo on Granjas list card"
 - Consumes: `liveNames: Set<string>` and `allPlayers: Player[]`, already computed in the same file (lines 26-27) — unchanged.
 - Produces: `byActividad(actividad)` now excludes live players; `items.length` used for the section count header (line 119) reflects the filtered count automatically since it's derived from the same call.
 
-- [ ] **Step 1: Update the `byActividad` filter**
+- [x] **Step 1: Update the `byActividad` filter**
 
 In `dashboard/client/src/pages/Jugadores.tsx:29-30`, change:
 
@@ -527,16 +527,16 @@ to:
       .sort((a, b) => a.minecraft_name.localeCompare(b.minecraft_name));
 ```
 
-- [ ] **Step 2: Build**
+- [x] **Step 2: Build**
 
 Run: `cd dashboard/client && npm run build`
 Expected: no TypeScript errors.
 
-- [ ] **Step 3: Manual verification**
+- [x] **Step 3: Manual verification**
 
 Open `/jugadores` with at least one online player. Confirm that player appears once, under "En línea", and does not also appear under their Activo/Ocasional/Inactivo section. Confirm the category count next to each section header matches the number of cards actually rendered under it. Take the player offline (or pick an offline one) and confirm they show under their actividad section as before.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add dashboard/client/src/pages/Jugadores.tsx
@@ -557,7 +557,7 @@ git commit -m "fix(dashboard): stop showing online players twice in jugadores li
 
 **Root cause (confirmed by reproduction):** `apiFetch` in `client.ts` unconditionally sets `Content-Type: application/json` on every non-FormData request, including `useLogout()`'s `apiFetch('/logout', { method: 'POST' })`, which has no `body`. Fastify's default JSON body parser throws `FST_ERR_CTP_EMPTY_JSON_BODY` ("Body cannot be empty when content-type is set to 'application/json'") when it sees that content-type header with an empty body. The app's global error handler in `app.ts` doesn't special-case this error code, so it falls through to a generic `500 { error: 'Error del servidor' }`. `useLogout()`'s mutation has no `onError` handler and Sidebar renders no error UI for it, so the failure is entirely silent — matching the reported symptom exactly. Reproduced directly via `app.inject({ method: 'POST', url: '/api/logout', headers: { cookie, 'content-type': 'application/json' } })` against a real (in-memory) app instance, which returned 500 with that exact error.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `dashboard/server/test/auth.test.ts` (check the file's existing imports first — it should already import `makeApp`/`loginAndGetCookie` from `./helpers.js`, matching `farms.test.ts`'s pattern):
 
@@ -571,12 +571,12 @@ test('POST /api/logout succeeds with no content-type header and no body (matches
 });
 ```
 
-- [ ] **Step 2: Run test to verify it currently passes (this documents the server is already correct without the header)**
+- [x] **Step 2: Run test to verify it currently passes (this documents the server is already correct without the header)**
 
 Run: `cd dashboard/server && npm test`
 Expected: PASS — this test isn't the one that catches the bug (the bug is client-side, in the header the browser sends); it documents the contract the client fix must produce. Confirm it passes before continuing.
 
-- [ ] **Step 3: Fix `apiFetch` to omit `Content-Type` when there's no body**
+- [x] **Step 3: Fix `apiFetch` to omit `Content-Type` when there's no body**
 
 In `dashboard/client/src/api/client.ts`, change:
 
@@ -603,21 +603,21 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   });
 ```
 
-- [ ] **Step 4: Build**
+- [x] **Step 4: Build**
 
 Run: `cd dashboard/client && npm run build`
 Expected: no TypeScript errors.
 
-- [ ] **Step 5: Manual verification (this is the one that actually proves the fix — the server test in Step 1 only documents the contract)**
+- [x] **Step 5: Manual verification (this is the one that actually proves the fix — the server test in Step 1 only documents the contract)**
 
 Start the dev stack, log in, open browser devtools Network tab, click "Cerrar sesión" in the sidebar. Confirm: the `POST /api/logout` request now returns `200 { ok: true }` (not 500), the app redirects to `/login`, and reloading any dashboard URL bounces back to `/login` until logging in again. Also spot-check one existing bodyless-ish call still works post-fix — e.g. delete a test player or task from `/jugadores` or `/tareas` and confirm the delete still succeeds (these already had the same latent header issue; this fix incidentally hardens them too, so confirm nothing regressed).
 
-- [ ] **Step 6: Run full server test suite**
+- [x] **Step 6: Run full server test suite**
 
 Run: `cd dashboard/server && npm test`
 Expected: PASS, full suite green (no server files changed behavior, only a new test was added).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add dashboard/client/src/api/client.ts dashboard/server/test/auth.test.ts
