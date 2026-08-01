@@ -1,4 +1,4 @@
-export type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done';
+export type TaskStatus = 'todo' | 'in_progress' | 'done';
 export type TaskPriority = 'low' | 'med' | 'high';
 
 export type Actividad = 'activo' | 'ocasional' | 'inactivo';
@@ -17,6 +17,7 @@ export interface Subtask {
   title: string;
   done: 0 | 1;
   sort_order: number;
+  assignees: Player[];
 }
 
 export interface Task {
@@ -28,6 +29,8 @@ export interface Task {
   due_date: string | null;
   farm_id: string | null;
   project_id: number | null;
+  completed_at: string | null;
+  archived: 0 | 1;
   created_at: string;
   updated_at: string;
   subtasks: Subtask[];

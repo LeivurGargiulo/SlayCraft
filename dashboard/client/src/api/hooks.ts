@@ -57,15 +57,15 @@ export function useDeleteTask() {
 export function useAddSubtask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ taskId, title }: { taskId: number; title: string }) =>
-      apiFetch<Subtask>(`/tasks/${taskId}/subtasks`, { method: 'POST', body: JSON.stringify({ title }) }),
+    mutationFn: ({ taskId, title, assignee_ids }: { taskId: number; title: string; assignee_ids?: number[] }) =>
+      apiFetch<Subtask>(`/tasks/${taskId}/subtasks`, { method: 'POST', body: JSON.stringify({ title, assignee_ids }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
   });
 }
 export function useUpdateSubtask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...input }: { id: number; done?: boolean; title?: string }) =>
+    mutationFn: ({ id, ...input }: { id: number; done?: boolean; title?: string; assignee_ids?: number[] }) =>
       apiFetch<Subtask>(`/subtasks/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
   });
