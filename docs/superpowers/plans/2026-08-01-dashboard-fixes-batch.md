@@ -1,6 +1,6 @@
 # Dashboard fixes batch Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship six independent fixes to the client dashboard: Alta-only task list, manual-farm exemption from the "requiere revisión" flag, a stuck card hover glow, farm cover photos, deduplicated jugadores online/category listing, and a broken logout button.
 
