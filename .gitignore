@@ -51,9 +51,6 @@ npm-debug.log
 # Generated
 .astro/
 
-# Server directories
-server/
-
 # Local development
 run/
 _archive/

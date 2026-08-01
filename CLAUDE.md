@@ -1,8 +1,9 @@
 # SlayCraft
 
-Monorepo: `slaycraft/dashboard/client` (React/Vite/Tailwind), `slaycraft/dashboard/server` (Fastify/better-sqlite3/zod),
-`slaycraft/mod` (Fabric/Java mod), `server` (Fabric Minecraft server runtime),
-docker-compose + Caddy for prod (nyttlandmc.net.ar).
+Monorepo: `dashboard/client` (React/Vite/Tailwind), `dashboard/server` (Fastify/better-sqlite3/zod),
+`mod` (Fabric/Java MCFarmManager mod), docker-compose + Caddy for prod (nyttlandmc.net.ar).
+
+Fabric Minecraft server runtime lives outside the repo at `/home/leivur/mcserver` (docker-compose build context `../mcserver`).
 
 mineflayer bot abandoned (too complex, insufficient time/tokens); archived to `_archive/mineflayer`.
 
@@ -12,7 +13,7 @@ Recurring task types in this repo and which skill covers them — check this bef
 
 - New feature or multi-file change → `superpowers:brainstorming` → `superpowers:writing-plans` → `superpowers:subagent-driven-development`
 - Bug report (dashboard, mod) → `superpowers:systematic-debugging` before proposing a fix
-- Any import/migration script touching live DB or slaycraft (e.g. `import-minecoop.ts`) → verify idempotency first, run under `superpowers:test-driven-development`
+- Any import/migration script touching live DB or MCFarmManager (e.g. `import-minecoop.ts`) → verify idempotency first, run under `superpowers:test-driven-development`
 - Branch ready to merge → `superpowers:finishing-a-development-branch`
 - Locating code / mapping a directory → delegate to `caveman:cavecrew-investigator` instead of manual grep
 - Single-file mechanical edit (rename, typo, small function rewrite) → `caveman:cavecrew-builder`
@@ -21,7 +22,7 @@ Recurring task types in this repo and which skill covers them — check this bef
 - Post-implementation cleanup pass (reuse, redundant abstractions, dead flexibility) → `simplify`
 - dashboard/client component or layout work → `frontend-design` for aesthetic/UX choices
 - Adding a chart to the dashboard (recharts, production history, etc.) → `dataviz` before writing chart code
-- Pre-merge security pass beyond mod/server auth flows (auth, cookies, slaycraft token) → `security-review`
+- Pre-merge security pass beyond mod/server auth flows (auth, cookies, MCFarmManager token) → `security-review`
 - Library/API doc lookup (Fastify, React Query, zod, better-sqlite3) → `context7` MCP instead of relying on training data
 - Multi-step reasoning on a hard bug or design tradeoff → `sequential-thinking` MCP
 - Symbol-level code nav (find definition/references) in dashboard → `serena` MCP instead of grepping full files
@@ -33,4 +34,4 @@ Recurring task types in this repo and which skill covers them — check this bef
 - Verifying a UI change actually works (dashboard/client) → `run` skill to launch and screenshot, not just typecheck
 - Committing + opening a PR together → `commit-commands:commit-push-pr`
 - After a session that changed conventions or repo layout → `claude-md-management:revise-claude-md` to keep this file current
-- Whole-repo architecture or cross-service relationship questions (dashboard ↔ slaycraft HTTP) → `graphify` over ad-hoc grepping across all pieces; distinct from `serena` (single-symbol lookup) — use graphify when the question spans services, not one file
+- Whole-repo architecture or cross-service relationship questions (dashboard ↔ MCFarmManager HTTP, mod ↔ Fabric server) → `graphify` over ad-hoc grepping across all pieces; distinct from `serena` (single-symbol lookup) — use graphify when the question spans services, not one file

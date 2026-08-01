@@ -1,7 +1,0 @@
-mod/build/
-mod/.gradle/
-mod/run/
-*.class
-.idea/
-*.iml
-.vscode/
