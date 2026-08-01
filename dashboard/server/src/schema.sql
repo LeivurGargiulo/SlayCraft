@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS farm_metadata (
   farm_id TEXT PRIMARY KEY,
   notes TEXT,
   tags TEXT,
-  coordinates TEXT
+  coordinates TEXT,
+  manual INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS farm_images (

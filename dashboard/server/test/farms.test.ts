@@ -16,7 +16,7 @@ test('GET /api/farms merges MCFarmManager data with dashboard metadata', async (
   assert.equal(res.statusCode, 200);
   const body = res.json();
   assert.equal(body.farms[0].id, 'iron');
-  assert.deepEqual(body.farms[0].metadata, { notes: 'necesita mas cofres', tags: ['prioridad', 'hierro'], coordinates: null, expected_rates: {} });
+  assert.deepEqual(body.farms[0].metadata, { notes: 'necesita mas cofres', tags: ['prioridad', 'hierro'], coordinates: null, expected_rates: {}, manual: false });
 });
 
 test('GET /api/farms returns 502 when MCFarmManager is unreachable', async (t) => {
@@ -228,4 +228,33 @@ test('farm image upload and delete', async (t) => {
 
   const list2 = await app.inject({ method: 'GET', url: '/api/farms', headers: { cookie } });
   assert.equal(list2.json().farms[0].images.length, 0);
+});
+
+test('PATCH /api/farms/:id/metadata round-trips manual flag, defaulting to false', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+
+  const res = await app.inject({
+    method: 'PATCH',
+    url: '/api/farms/iron/metadata',
+    headers: { cookie },
+    payload: { manual: true },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.json().metadata.manual, true);
+
+  const row = db.prepare('SELECT manual FROM farm_metadata WHERE farm_id = ?').get('iron') as any;
+  assert.equal(row.manual, 1);
+});
+
+test('metadata manual defaults to false when unset', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  const res = await app.inject({
+    method: 'PATCH',
+    url: '/api/farms/iron/metadata',
+    headers: { cookie },
+    payload: { notes: 'sin toggle todavia' },
+  });
+  assert.equal(res.json().metadata.manual, false);
 });

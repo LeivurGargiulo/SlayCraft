@@ -14,10 +14,11 @@ interface FarmMetadataRow {
   tags: string | null;
   coordinates: string | null;
   expected_rates: string | null;
+  manual: number;
 }
 
 function getMetadata(db: Database.Database, farmId: string) {
-  const row = db.prepare('SELECT notes, tags, coordinates, expected_rates FROM farm_metadata WHERE farm_id = ?').get(farmId) as
+  const row = db.prepare('SELECT notes, tags, coordinates, expected_rates, manual FROM farm_metadata WHERE farm_id = ?').get(farmId) as
     | FarmMetadataRow
     | undefined;
   return {
@@ -25,6 +26,7 @@ function getMetadata(db: Database.Database, farmId: string) {
     tags: row?.tags ? row.tags.split(',').filter(Boolean) : [],
     coordinates: row?.coordinates ?? null,
     expected_rates: row?.expected_rates ? JSON.parse(row.expected_rates) : {},
+    manual: !!row?.manual,
   };
 }
 
@@ -64,6 +66,7 @@ const metadataSchema = z.object({
   tags: z.array(z.string()).optional(),
   coordinates: z.string().nullable().optional(),
   expected_rates: z.record(z.string(), z.number()).optional(),
+  manual: z.boolean().optional(),
 });
 
 const positionSchema = z.object({ x: z.number().int(), y: z.number().int(), z: z.number().int() });
@@ -142,14 +145,15 @@ export function registerFarmRoutes(app: FastifyInstance, db: Database.Database, 
     const { id } = req.params as { id: string };
     const body = metadataSchema.parse(req.body);
     db.prepare(
-      `INSERT INTO farm_metadata (farm_id, notes, tags, coordinates, expected_rates) VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(farm_id) DO UPDATE SET notes = excluded.notes, tags = excluded.tags, coordinates = excluded.coordinates, expected_rates = excluded.expected_rates`
+      `INSERT INTO farm_metadata (farm_id, notes, tags, coordinates, expected_rates, manual) VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(farm_id) DO UPDATE SET notes = excluded.notes, tags = excluded.tags, coordinates = excluded.coordinates, expected_rates = excluded.expected_rates, manual = excluded.manual`
     ).run(
       id,
       body.notes ?? null,
       body.tags ? body.tags.join(',') : null,
       body.coordinates ?? null,
-      body.expected_rates ? JSON.stringify(body.expected_rates) : null
+      body.expected_rates ? JSON.stringify(body.expected_rates) : null,
+      body.manual ? 1 : 0
     );
     return { ok: true, metadata: getMetadata(db, id) };
   });
