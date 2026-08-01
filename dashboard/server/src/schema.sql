@@ -74,7 +74,8 @@ CREATE TABLE IF NOT EXISTS farm_metadata (
   notes TEXT,
   tags TEXT,
   coordinates TEXT,
-  manual INTEGER NOT NULL DEFAULT 0
+  manual INTEGER NOT NULL DEFAULT 0,
+  hidden INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS farm_images (

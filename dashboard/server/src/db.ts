@@ -92,6 +92,9 @@ export function openDb(dbPath: string): Database.Database {
   if (!farmMetadataColumns.some((c) => c.name === 'manual')) {
     db.exec('ALTER TABLE farm_metadata ADD COLUMN manual INTEGER NOT NULL DEFAULT 0');
   }
+  if (!farmMetadataColumns.some((c) => c.name === 'hidden')) {
+    db.exec('ALTER TABLE farm_metadata ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0');
+  }
   const playerColumns = db.prepare('PRAGMA table_info(players)').all() as Array<{ name: string }>;
   if (!playerColumns.some((c) => c.name === 'actividad')) {
     db.exec("ALTER TABLE players ADD COLUMN actividad TEXT NOT NULL DEFAULT 'ocasional' CHECK (actividad IN ('activo','ocasional','inactivo'))");

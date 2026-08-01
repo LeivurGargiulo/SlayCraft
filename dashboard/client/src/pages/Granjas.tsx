@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useFarms, useCreateFarm } from '../api/hooks';
+import { useFarms, useCreateFarm, useUpdateFarmMetadata } from '../api/hooks';
 import Card from '../components/Card';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
@@ -15,7 +15,9 @@ const DIMENSIONS = [
 export default function Granjas() {
   const farms = useFarms();
   const createFarm = useCreateFarm();
+  const updateMetadata = useUpdateFarmMetadata();
   const [modalOpen, setModalOpen] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
   const [id, setId] = useState('');
   const [name, setName] = useState('');
   const [dimension, setDimension] = useState('minecraft:overworld');
@@ -48,13 +50,31 @@ export default function Granjas() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="font-mono text-2xl text-gold">Granjas</h1>
-        <button onClick={() => setModalOpen(true)} className="rounded bg-gold px-3 py-2 text-sm font-medium text-base hover:opacity-90">
-          + Nueva granja
-        </button>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-sm text-slate-400">
+            <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
+            Mostrar ocultas
+          </label>
+          <button onClick={() => setModalOpen(true)} className="rounded bg-gold px-3 py-2 text-sm font-medium text-base hover:opacity-90">
+            + Nueva granja
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {farms.data!.farms.map((f) => (
-          <Link key={f.id} to={`/granjas/${f.id}`}>
+        {farms.data!.farms
+          .filter((f) => showHidden || !f.metadata.hidden)
+          .map((f) => (
+          <Link key={f.id} to={`/granjas/${f.id}`} className="relative">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                updateMetadata.mutate({ id: f.id, ...f.metadata, hidden: !f.metadata.hidden });
+              }}
+              className="absolute right-2 top-2 z-10 rounded bg-base/80 px-2 py-1 text-xs text-slate-400 hover:text-cyan"
+            >
+              {f.metadata.hidden ? 'Mostrar' : 'Ocultar'}
+            </button>
             <Card>
               {f.images[0] ? (
                 <img src={`/uploads/${f.images[0].path}`} alt={f.name} className="mb-2 h-32 w-full rounded object-cover" />
@@ -69,6 +89,7 @@ export default function Granjas() {
                 <span className="font-medium">{f.name}</span>
                 <div className="flex items-center gap-1">
                   {f.metadata.manual && <span className="rounded bg-base px-2 py-0.5 text-xs text-cyan">Manual</span>}
+                  {f.metadata.hidden && <span className="rounded bg-base px-2 py-0.5 text-xs text-slate-400">Oculta</span>}
                   <StatusBadge status={f.online ? 'online' : 'offline'} />
                 </div>
               </div>

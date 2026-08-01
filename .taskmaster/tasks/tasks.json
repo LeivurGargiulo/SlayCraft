@@ -161,8 +161,9 @@
         "testStrategy": "Seed a few tasks via import, then run `npm run import-minecoop` again. Verify task count (`SELECT COUNT(*) FROM tasks`) is unchanged on the second run. Confirm no duplicate tasks with the same title+project_id appear in the tasks table. Verify subtasks and assignees for existing tasks are not duplicated.",
         "priority": "low",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-08-01T16:02:22.598Z"
       },
       {
         "id": "14",
@@ -203,9 +204,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-08-01T13:59:10.361Z",
+      "lastModified": "2026-08-01T16:02:22.598Z",
       "taskCount": 16,
-      "completedCount": 12,
+      "completedCount": 13,
       "tags": [
         "master"
       ]

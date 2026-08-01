@@ -110,6 +110,7 @@ export default function GranjaDetail() {
   const [coordinates, setCoordinates] = useState('');
   const [editingMeta, setEditingMeta] = useState(false);
   const [manual, setManual] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [expectedRates, setExpectedRates] = useState<Array<{ itemId: string; rate: string }>>([]);
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -125,6 +126,7 @@ export default function GranjaDetail() {
     setCoordinates(f.metadata.coordinates ?? '');
     setExpectedRates(Object.entries(f.metadata.expected_rates).map(([itemId, rate]) => ({ itemId, rate: String(rate) })));
     setManual(f.metadata.manual);
+    setHidden(f.metadata.hidden);
     setEditingMeta(true);
   }
 
@@ -139,6 +141,7 @@ export default function GranjaDetail() {
       coordinates: coordinates || null,
       expected_rates,
       manual,
+      hidden,
     });
     setEditingMeta(false);
   }
@@ -196,6 +199,7 @@ export default function GranjaDetail() {
           )}
           <h1 className="font-mono text-2xl text-gold">{f.name}</h1>
           {f.metadata.manual && <span className="rounded bg-base px-2 py-0.5 text-xs text-cyan">Manual</span>}
+          {f.metadata.hidden && <span className="rounded bg-base px-2 py-0.5 text-xs text-slate-400">Oculta</span>}
         </div>
         <div className="flex gap-2">
           <button onClick={startEditConfig} className="rounded border border-border px-3 py-1.5 text-sm text-cyan hover:bg-cyan/10">
@@ -246,6 +250,7 @@ export default function GranjaDetail() {
                 onChange={setManual}
                 label="Granja manual (no 24/7) — no marcar como caída por falta de producción"
               />
+              <Checkbox checked={hidden} onChange={setHidden} label="Ocultar de /granjas" />
               <div className="space-y-1">
                 <div className="text-xs text-slate-400">Tasas esperadas (ítem por hora)</div>
                 {expectedRates.map((row, i) => (

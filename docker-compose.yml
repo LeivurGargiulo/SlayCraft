@@ -47,7 +47,10 @@ services:
 volumes:
   dashboard-data:
     name: dashboard_dashboard-data
+    external: true
   caddy-data:
     name: dashboard_caddy-data
+    external: true
   caddy-config:
     name: dashboard_caddy-config
+    external: true

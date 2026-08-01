@@ -162,6 +162,7 @@ export function useUpdateFarmMetadata() {
       coordinates,
       expected_rates,
       manual,
+      hidden,
     }: {
       id: string;
       notes?: string | null;
@@ -169,7 +170,8 @@ export function useUpdateFarmMetadata() {
       coordinates?: string | null;
       expected_rates?: Record<string, number>;
       manual?: boolean;
-    }) => apiFetch(`/farms/${id}/metadata`, { method: 'PATCH', body: JSON.stringify({ notes, tags, coordinates, expected_rates, manual }) }),
+      hidden?: boolean;
+    }) => apiFetch(`/farms/${id}/metadata`, { method: 'PATCH', body: JSON.stringify({ notes, tags, coordinates, expected_rates, manual, hidden }) }),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['farms'] });
       qc.invalidateQueries({ queryKey: ['farms', vars.id] });
