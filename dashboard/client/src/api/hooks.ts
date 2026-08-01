@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from './client';
 import type {
   Task, TaskInput, Subtask, Player, FarmSummary, FarmDetail, FarmHistorySample,
-  LivePlayer, Performance, Project, ProjectImage, GalleryImage, FarmImage, FarmConfig,
+  LivePlayer, Performance, Project, ProjectImage, GalleryImage, FarmImage, FarmConfig, Actividad,
 } from './types';
 
 // --- auth ---
@@ -89,7 +89,7 @@ export function usePlayers() {
 export function useCreatePlayer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { minecraft_name: string; note?: string | null }) =>
+    mutationFn: (input: { minecraft_name: string; note?: string | null; actividad?: Actividad }) =>
       apiFetch<Player>('/players', { method: 'POST', body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['players'] }),
   });
@@ -97,7 +97,7 @@ export function useCreatePlayer() {
 export function useUpdatePlayer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...input }: { id: number; minecraft_name?: string; note?: string | null }) =>
+    mutationFn: ({ id, ...input }: { id: number; minecraft_name?: string; note?: string | null; actividad?: Actividad }) =>
       apiFetch<Player>(`/players/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['players'] }),
   });

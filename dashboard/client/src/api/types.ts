@@ -1,10 +1,13 @@
 export type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done';
 export type TaskPriority = 'low' | 'med' | 'high';
 
+export type Actividad = 'activo' | 'ocasional' | 'inactivo';
+
 export interface Player {
   id: number;
   minecraft_name: string;
   note: string | null;
+  actividad: Actividad;
   created_at: string;
 }
 
