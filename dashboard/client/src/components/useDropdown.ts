@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 
-export function useDropdown<T extends HTMLElement>() {
+export function useDropdown<T extends HTMLElement>(extraRef?: RefObject<HTMLElement | null>) {
   const [open, setOpen] = useState(false);
   const ref = useRef<T>(null);
 
   useEffect(() => {
     if (!open) return;
     function onDocClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current && !ref.current.contains(target) && !extraRef?.current?.contains(target)) {
+        setOpen(false);
+      }
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false);
@@ -18,7 +21,7 @@ export function useDropdown<T extends HTMLElement>() {
       document.removeEventListener('mousedown', onDocClick);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, extraRef]);
 
   return { open, setOpen, ref };
 }
