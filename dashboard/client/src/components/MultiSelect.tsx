@@ -74,7 +74,7 @@ export default function MultiSelect<T extends string | number>({
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.12 }}
               style={{ position: 'fixed', top: position.top, left: position.left, width: position.width }}
-              className="z-20 max-h-72 min-w-max overflow-hidden rounded border border-border bg-panel shadow-lg"
+              className="z-[60] max-h-72 min-w-max overflow-hidden rounded border border-border bg-panel shadow-lg"
             >
               {searchable && (
                 <input

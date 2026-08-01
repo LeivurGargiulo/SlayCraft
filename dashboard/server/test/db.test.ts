@@ -117,6 +117,12 @@ test('migration: blocked tasks converted to todo, FKs preserved in populated DB'
         player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
         PRIMARY KEY (task_id, player_id)
       );
+
+      CREATE TABLE IF NOT EXISTS subtask_assignees (
+        subtask_id INTEGER NOT NULL REFERENCES subtasks(id) ON DELETE CASCADE,
+        player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        PRIMARY KEY (subtask_id, player_id)
+      );
     `);
 
     // Insert test data: blocked task with child rows
@@ -125,6 +131,7 @@ test('migration: blocked tasks converted to todo, FKs preserved in populated DB'
     oldDb.prepare("INSERT INTO tasks (id, title, status) VALUES (2, 'todo task', 'todo')").run();
     oldDb.prepare("INSERT INTO subtasks (id, task_id, title) VALUES (1, 1, 'subtask of blocked')").run();
     oldDb.prepare("INSERT INTO task_assignees (task_id, player_id) VALUES (1, 1)").run();
+    oldDb.prepare("INSERT INTO subtask_assignees (subtask_id, player_id) VALUES (1, 1)").run();
 
     oldDb.close();
 
@@ -156,6 +163,27 @@ test('migration: blocked tasks converted to todo, FKs preserved in populated DB'
     const assigneeFkList = newDb.prepare("PRAGMA foreign_key_list('task_assignees')").all() as Array<{ table: string }>;
     const tasksFkInAssignee = assigneeFkList.find(fk => fk.table === 'tasks');
     assert.ok(tasksFkInAssignee, 'task_assignees should have FK to tasks table (not tasks_old)');
+
+    // Verify: the blocked-status rename of `subtasks` (a SQLite side effect) corrupted
+    // subtask_assignees's FK, and the self-heal migration repaired it within this same
+    // openDb call — composed path coverage, not just the dedicated self-heal test below.
+    const subtaskAssigneesSql = (
+      newDb.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='subtask_assignees'").get() as {
+        sql: string;
+      }
+    ).sql;
+    assert.ok(!subtaskAssigneesSql.includes('subtasks_old'), 'subtask_assignees FK should no longer reference subtasks_old');
+
+    const subtaskAssigneesFkList = newDb.prepare("PRAGMA foreign_key_list('subtask_assignees')").all() as Array<{
+      table: string;
+    }>;
+    const subtasksFkInAssignee = subtaskAssigneesFkList.find((fk) => fk.table === 'subtasks');
+    assert.ok(subtasksFkInAssignee, 'subtask_assignees should have FK to subtasks table (not subtasks_old)');
+
+    const subtaskAssignee = newDb
+      .prepare('SELECT subtask_id, player_id FROM subtask_assignees WHERE subtask_id = 1 AND player_id = 1')
+      .get();
+    assert.ok(subtaskAssignee, 'subtask_assignees row should survive the composed blocked-status + self-heal migration');
 
     // Verify: no FK constraint violations
     const violations = newDb.prepare("PRAGMA foreign_key_check").all();

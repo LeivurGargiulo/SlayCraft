@@ -173,6 +173,26 @@ test('GET /api/tasks returns tasks sorted by priority (high, med, low), then by 
   });
   const medId = medTask.json().id;
 
+  // Same-priority (high) tasks with different due dates, created out of due-date order,
+  // plus one with no due_date, to verify the (due_date IS NULL), due_date ASC tiebreaker.
+  const highNoDueTask = await app.inject({
+    method: 'POST', url: '/api/tasks', headers: { cookie },
+    payload: { title: 'High priority, no due date', priority: 'high' },
+  });
+  const highNoDueId = highNoDueTask.json().id;
+
+  const highLateTask = await app.inject({
+    method: 'POST', url: '/api/tasks', headers: { cookie },
+    payload: { title: 'High priority, late due date', priority: 'high', due_date: '2026-12-01' },
+  });
+  const highLateId = highLateTask.json().id;
+
+  const highEarlyTask = await app.inject({
+    method: 'POST', url: '/api/tasks', headers: { cookie },
+    payload: { title: 'High priority, early due date', priority: 'high', due_date: '2026-08-15' },
+  });
+  const highEarlyId = highEarlyTask.json().id;
+
   // Fetch all tasks and verify order
   const list = await app.inject({ method: 'GET', url: '/api/tasks', headers: { cookie } });
   const tasks = list.json().tasks;
@@ -181,8 +201,16 @@ test('GET /api/tasks returns tasks sorted by priority (high, med, low), then by 
   const highIdx = tasks.findIndex((t: { id: number }) => t.id === highId);
   const medIdx = tasks.findIndex((t: { id: number }) => t.id === medId);
   const lowIdx = tasks.findIndex((t: { id: number }) => t.id === lowId);
+  const highNoDueIdx = tasks.findIndex((t: { id: number }) => t.id === highNoDueId);
+  const highLateIdx = tasks.findIndex((t: { id: number }) => t.id === highLateId);
+  const highEarlyIdx = tasks.findIndex((t: { id: number }) => t.id === highEarlyId);
 
   // Verify high comes before med, med comes before low
   assert.ok(highIdx < medIdx, 'high priority should come before med priority');
   assert.ok(medIdx < lowIdx, 'med priority should come before low priority');
+
+  // Verify due_date tiebreaker within the same priority tier: earliest due_date first,
+  // then latest, then no due_date last (due_date IS NULL sorts last).
+  assert.ok(highEarlyIdx < highLateIdx, 'earlier due_date should come before later due_date within same priority');
+  assert.ok(highLateIdx < highNoDueIdx, 'tasks with a due_date should come before tasks with no due_date within same priority');
 });

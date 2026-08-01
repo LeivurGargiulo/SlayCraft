@@ -15,6 +15,15 @@ export function openDb(dbPath: string): Database.Database {
     db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'").get() as { sql: string } | undefined
   )?.sql ?? '';
   if (tasksTableSql.includes("'blocked'")) {
+    // Renaming `tasks`/`subtasks` below makes SQLite auto-rewrite FK clauses in any
+    // OTHER table that references them (e.g. subtask_assignees -> subtasks_old) to
+    // keep pointing at the new name. With foreign_keys=ON, the later `DROP TABLE
+    // tasks_old`/`subtasks_old` then performs an implicit cascading DELETE through
+    // those rewritten FKs (SQLite fires ON DELETE actions on DROP), wiping rows in
+    // tables this migration never intended to touch (e.g. subtask_assignees). Turn
+    // FK enforcement off for the duration of the rename dance to avoid that; pragma
+    // changes are no-ops inside a transaction, so this must happen outside it.
+    db.pragma('foreign_keys = OFF');
     db.transaction(() => {
       db.exec("UPDATE tasks SET status='todo' WHERE status='blocked'");
       db.exec('ALTER TABLE tasks RENAME TO tasks_old');
@@ -37,6 +46,7 @@ export function openDb(dbPath: string): Database.Database {
       db.exec('DROP TABLE subtasks_old');
       db.exec('DROP TABLE task_assignees_old');
     })();
+    db.pragma('foreign_keys = ON');
   }
   // Self-heal: a past rename of `subtasks` (see migration above) caused SQLite to
   // silently rewrite subtask_assignees's FK clause to reference the now-dropped
