@@ -73,10 +73,11 @@ export function registerTaskRoutes(app: FastifyInstance, db: Database.Database) 
 
   app.post('/api/tasks', async (req, reply) => {
     const body = taskInput.parse(req.body);
+    const completed_at = body.status === 'done' ? new Date().toISOString() : null;
     const info = db
       .prepare(
-        `INSERT INTO tasks (title, description, status, priority, due_date, farm_id, project_id)
-         VALUES (@title, @description, @status, @priority, @due_date, @farm_id, @project_id)`
+        `INSERT INTO tasks (title, description, status, priority, due_date, farm_id, project_id, completed_at, archived)
+         VALUES (@title, @description, @status, @priority, @due_date, @farm_id, @project_id, @completed_at, @archived)`
       )
       .run({
         title: body.title,
@@ -86,6 +87,8 @@ export function registerTaskRoutes(app: FastifyInstance, db: Database.Database) 
         due_date: body.due_date ?? null,
         farm_id: body.farm_id ?? null,
         project_id: body.project_id ?? null,
+        completed_at,
+        archived: 0,
       });
     setAssignees(db, Number(info.lastInsertRowid), body.assignee_ids);
     reply.code(201);

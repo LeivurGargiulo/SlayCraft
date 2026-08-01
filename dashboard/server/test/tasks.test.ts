@@ -98,3 +98,24 @@ test('re-opening a done task clears completed_at and un-archives it', async () =
   assert.equal(reopened.completed_at, null);
   assert.equal(reopened.archived, 0);
 });
+
+test('POST with status=done sets completed_at and is subject to archive sweep', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+
+  const create = await app.inject({
+    method: 'POST', url: '/api/tasks', headers: { cookie },
+    payload: { title: 'Expandir granja de trigo', status: 'done' },
+  });
+  const taskId = create.json().id;
+  assert.ok(create.json().completed_at);
+
+  // backdate completion to 4 days ago to simulate "done for 3+ continuous days"
+  db.prepare("UPDATE tasks SET completed_at = datetime('now', '-4 days') WHERE id = ?").run(taskId);
+
+  const list = await app.inject({ method: 'GET', url: '/api/tasks', headers: { cookie } });
+  assert.ok(!list.json().tasks.some((t: { id: number }) => t.id === taskId));
+
+  const stillFetchableDirectly = await app.inject({ method: 'GET', url: `/api/tasks/${taskId}`, headers: { cookie } });
+  assert.equal(stillFetchableDirectly.json().archived, 1);
+});
