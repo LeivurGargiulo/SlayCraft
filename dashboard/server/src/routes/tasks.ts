@@ -79,7 +79,7 @@ export function registerTaskRoutes(app: FastifyInstance, db: Database.Database) 
          AND completed_at <= datetime('now', '-3 days')`
     ).run();
     const tasks = db
-      .prepare("SELECT * FROM tasks WHERE archived = 0 ORDER BY (due_date IS NULL), due_date ASC")
+      .prepare(`SELECT * FROM tasks WHERE archived = 0 ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'med' THEN 1 WHEN 'low' THEN 2 END, (due_date IS NULL), due_date ASC`)
       .all() as TaskRow[];
     return { tasks: tasks.map((t) => hydrateTask(db, t)) };
   });

@@ -149,3 +149,40 @@ test('subtasks support rename and multi-assignee', async () => {
   const parentTask = await app.inject({ method: 'GET', url: `/api/tasks/${taskId}`, headers: { cookie } });
   assert.equal(parentTask.json().subtasks[0].assignees.length, 1);
 });
+
+test('GET /api/tasks returns tasks sorted by priority (high, med, low), then by due_date', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+
+  // Create tasks in order: low, high, med (to verify sort is not relying on insertion order)
+  const lowTask = await app.inject({
+    method: 'POST', url: '/api/tasks', headers: { cookie },
+    payload: { title: 'Low priority task', priority: 'low' },
+  });
+  const lowId = lowTask.json().id;
+
+  const highTask = await app.inject({
+    method: 'POST', url: '/api/tasks', headers: { cookie },
+    payload: { title: 'High priority task', priority: 'high' },
+  });
+  const highId = highTask.json().id;
+
+  const medTask = await app.inject({
+    method: 'POST', url: '/api/tasks', headers: { cookie },
+    payload: { title: 'Med priority task', priority: 'med' },
+  });
+  const medId = medTask.json().id;
+
+  // Fetch all tasks and verify order
+  const list = await app.inject({ method: 'GET', url: '/api/tasks', headers: { cookie } });
+  const tasks = list.json().tasks;
+
+  // Find our tasks in the returned list
+  const highIdx = tasks.findIndex((t: { id: number }) => t.id === highId);
+  const medIdx = tasks.findIndex((t: { id: number }) => t.id === medId);
+  const lowIdx = tasks.findIndex((t: { id: number }) => t.id === lowId);
+
+  // Verify high comes before med, med comes before low
+  assert.ok(highIdx < medIdx, 'high priority should come before med priority');
+  assert.ok(medIdx < lowIdx, 'med priority should come before low priority');
+});
