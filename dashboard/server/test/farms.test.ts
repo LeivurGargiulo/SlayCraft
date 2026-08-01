@@ -243,7 +243,7 @@ test('PATCH /api/farms/:id/metadata round-trips manual flag, defaulting to false
   assert.equal(res.statusCode, 200);
   assert.equal(res.json().metadata.manual, true);
 
-  const row = db.prepare('SELECT manual FROM farm_metadata WHERE farm_id = ?').get('iron') as any;
+  const row = db.prepare('SELECT manual FROM farm_metadata WHERE farm_id = ?').get('iron') as { manual: number };
   assert.equal(row.manual, 1);
 });
 
