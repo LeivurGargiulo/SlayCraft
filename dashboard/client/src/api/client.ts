@@ -8,7 +8,7 @@ export class ApiError extends Error {
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const isFormData = options.body instanceof FormData;
-  const needsJsonHeader = !isFormData && options.body !== undefined;
+  const needsJsonHeader = !isFormData && options.body != null;
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     credentials: 'include',
