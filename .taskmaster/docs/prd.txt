@@ -1,0 +1,140 @@
+# SlayCraft Server Tooling — PRD
+
+## Overview
+
+Server admin + players need live visibility into a Carpet-enabled Fabric survival
+server, plus a shared place to coordinate builds/tasks. Two components split by
+concern: a read-only mod exposing world state over HTTP, and a self-hosted web
+dashboard that consumes it and owns group-facing data (tasks, players, projects,
+gallery). Group is small, trusted, Spanish-speaking; no per-user accounts needed.
+
+## System architecture
+
+```
+Minecraft server (Fabric + Carpet, 1.21.11)
+  -> MCFarmManager (mod)  --HTTP:8642-->  Coordination Dashboard (server) --HTTP--> browsers
+       reads live world state                owns tasks/players/projects/gallery
+       no writes, ever                       proxies MCFarmManager for live data
+```
+
+## 1. MCFarmManager (`MCFarmManager/`)
+
+Server-side Fabric mod, built as a Carpet Extension. Read-only, full stop — no
+block breaking/placing, no item movement, no interaction packets. Inspects
+existing world state (BlockEntity inventory slots, entity lists, chunk state,
+Carpet's own tick timing) and returns JSON.
+
+Rationale for a mod over a bot: direct access to server-internal state
+(chunk-loaded status, fake-player detection, tick timing) without the overhead
+or fragility of a Mineflayer-style bot connection (MFO/docs/adr/0001).
+
+### Config
+
+`config/mcfarmmanager/farms.json` — list of farms: id, name, dimension, anchor
+position, entity-scan radius, optional fake-player name for online-status
+detection, storage container positions. Mod-level settings (port, bind
+address, sample interval, history retention) are Carpet rules.
+
+### HTTP API (default `http://<server-host>:8642`)
+
+| Endpoint | Returns |
+|---|---|
+| GET /farms | summary list of all configured farms |
+| GET /farms/{id} | live detail: entities, storage contents, chunk-loaded, fake-player online |
+| GET /farms/{id}/history?range= | sampled history for that farm (SQLite-backed) |
+| GET /players | online players |
+| GET /world | world/dimension state |
+| GET /performance | TPS / tick timing, from Carpet's own tracking |
+| GET /status | mod version, MC version, Carpet version, uptime, farm count |
+
+History sampled on a timer (default 5 min) into SQLite at
+`<world save dir>/mcfarmmanager/history.sqlite`, pruned past retention (default
+30 days).
+
+**Status:** fully implemented, live-verified, deployed to `servers/fabric/mods/`.
+
+## 2. Coordination Dashboard (`dashboard/`)
+
+Self-hosted web app: live server/farm visibility (proxied from MCFarmManager)
+plus a task tracker, player roster, project log, build-photo gallery owned
+directly by the dashboard. Single shared password, no per-user accounts. All
+user-facing text in Spanish.
+
+- `dashboard/server/` — Fastify + better-sqlite3. Owns `tasks`/`subtasks`,
+  `players`, `projects`, `project_images`, `gallery`, `farm_metadata` tables;
+  proxies MCFarmManager for anything live.
+- `dashboard/client/` — Vite + React + Tailwind. Six views: Overview, Tareas,
+  Jugadores, Granjas, Proyectos, Galería.
+
+### Views → data source
+
+| View | Backed by |
+|---|---|
+| Overview | live TPS/players from MCFarmManager + open task count |
+| Tareas | dashboard's own tasks/subtasks tables |
+| Jugadores | dashboard's own players table (activo/ocasional/inactivo categories), cross-referenced live against MCFarmManager's online list |
+| Granjas | MCFarmManager's /farms data + dashboard-owned notes/metadata layered on top |
+| Proyectos | dashboard's own projects table + uploaded images |
+| Galería | dashboard's own gallery table + uploaded images and captions |
+
+### Delivered
+
+- Core app: 19-task plan, dark game-HUD UI, Spanish i18n, single-password auth,
+  security-reviewed.
+- Docker packaging: Caddy TLS proxy, nginx, HTTPS (Let's Encrypt), verified
+  build/first-run/login through the full proxy chain.
+- Jugadores categories (activo/ocasional/inactivo) + one-time minecoop data
+  import (tareas with subtasks/assignees, proyectos, granjas) — 15 jugadores,
+  13 proyectos, 33 granjas, 29 tareas imported and verified live.
+- Farm production history chart, AFK spots, shulker nesting, production rates.
+
+### Known gaps / open work
+
+1. **Real farm coordinates.** All 33 imported farms share a placeholder
+   anchor/storage/AFK position (0,64,0) because the minecoop import had no
+   structured coordinate data — original coordinate text is preserved in
+   `farm_metadata.notes` per farm as reference. Distance/chunk-loaded/occupant
+   tracking reads wrong until each farm's real position is hand-entered via
+   the Granja detail config UI. Scope: UI-driven data correction, no new
+   feature.
+2. **Dashboard fixes batch** (6 independent small fixes, spec at
+   `docs/superpowers/specs/2026-08-01-dashboard-fixes-batch.md`):
+   - Overview "Tareas que necesitan atención" should only include Alta
+     (high) priority tasks, not blocked/overdue.
+   - Granjas: add a manual per-farm "no 24/7" toggle so manually-run farms
+     aren't flagged as needing review just for not currently producing;
+     storage-near-full should still flag them regardless.
+   - Card hover glow gets stuck on in Granjas/Proyectos due to two competing
+     hover mechanisms (framer-motion whileHover + Tailwind hover class) —
+     remove the redundant class-based one.
+   - Granjas cards should show a cover photo (infra already exists via
+     farm_images), matching Proyectos card style.
+   - Jugadores: online players currently appear twice (once under "En línea",
+     once under their actividad section) — exclude live players from
+     actividad sections.
+   - Logout button reported non-functional — root cause not yet confirmed,
+     diagnose live (does POST /api/logout fire, does cookie clear, does the
+     me-query refetch/401, does RequireAuth redirect).
+3. **Import script re-run safety.** `import-minecoop.ts`'s granja/proyecto
+   import steps are now idempotent (skip existing by id/name), but the tareas
+   and jugadores import steps are not — re-running duplicates tasks. Not
+   scheduled for a second run; flag if that changes.
+4. **Mineflayer bot findings** (from prior review, not yet actioned):
+   path traversal risk in buildSchematic.js/schemLoader.js/litematicLoader.js;
+   negative Litematica Size offset bug; blockstate/orientation discarded on
+   rotate.
+
+## Explicitly out of scope
+
+Per each component's spec: auth beyond the single shared dashboard password,
+per-user roles/permissions, alerting/notifications (e.g. Discord), multi-server
+support, history for anything other than farms, MCFarmManager serving its own
+dashboard (superseded by the coordination dashboard, MFO/docs/adr/0002). New
+requests in these areas are new scope, not bugs.
+
+## Reference docs
+
+- `MCFarmManager/docs/SPEC.md` — MCFarmManager protocol/data model spec.
+- `docs/superpowers/specs/2026-07-30-coordination-dashboard-design.md` — dashboard design spec.
+- `MFO/docs/adr/` — architecture decisions behind the mod/dashboard split.
+- `docs/USER_GUIDE.md`, `docs/QUICKSTART.md` — install/config/day-to-day use.
