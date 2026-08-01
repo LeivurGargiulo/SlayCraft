@@ -1,7 +1,6 @@
 const LABELS: Record<string, string> = {
   todo: 'Pendiente',
   in_progress: 'En curso',
-  blocked: 'Bloqueada',
   done: 'Hecha',
   online: 'En línea',
   offline: 'Fuera de línea',
@@ -10,7 +9,6 @@ const LABELS: Record<string, string> = {
 const COLORS: Record<string, string> = {
   todo: 'bg-status-todo/20 text-status-todo',
   in_progress: 'bg-status-progress/20 text-status-progress',
-  blocked: 'bg-status-blocked/20 text-status-blocked',
   done: 'bg-status-done/20 text-status-done',
   online: 'bg-status-done/20 text-status-done',
   offline: 'bg-status-blocked/20 text-status-blocked',
