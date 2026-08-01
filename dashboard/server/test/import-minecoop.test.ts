@@ -27,11 +27,26 @@ test('importProyectos inserts projects and returns a slug-to-id map', () => {
   assert.deepEqual(row, { name: 'Catedral', status: 'active', coordinates: 'Centro: 0, 0, 0' });
 });
 
+test('importProyectos is idempotent: re-running with the same input does not duplicate rows', () => {
+  const db = openDb(':memory:');
+  const proyectos = [{ id: 'catedral', title: 'Catedral', coordinates: ['Centro: 0, 0, 0'] }];
+
+  const firstRun = importProyectos(db, proyectos);
+  const secondRun = importProyectos(db, proyectos);
+
+  assert.equal(firstRun.get('catedral'), secondRun.get('catedral'));
+  const count = db.prepare('SELECT COUNT(*) AS n FROM projects WHERE name = ?').get('Catedral') as any;
+  assert.equal(count.n, 1);
+});
+
 test('importGranjas registers a Farm per granja via MCFarmManager and stores metadata', async (t) => {
   const db = openDb(':memory:');
   const calls: Array<{ url: string; init: any }> = [];
   const fetchMock = mock.method(globalThis, 'fetch', async (url: string, init: any) => {
     calls.push({ url, init });
+    if (!init?.method || init.method === 'GET') {
+      return new Response(JSON.stringify({ farms: [] }), { status: 200 });
+    }
     return new Response(JSON.stringify(JSON.parse(init.body)), { status: 201 });
   });
   t.after(() => fetchMock.mock.restore());
@@ -41,20 +56,46 @@ test('importGranjas registers a Farm per granja via MCFarmManager and stores met
     { id: 'granja-blaze', title: 'Granja de Blaze', coordinates: ['Granja (Nether): 0, 0, 0'] },
   ]);
 
-  assert.equal(calls.length, 2);
-  const ironBody = JSON.parse(calls[0].init.body);
+  assert.equal(calls.length, 3);
+  const ironBody = JSON.parse(calls[1].init.body);
   assert.equal(ironBody.id, 'granja-hierro');
   assert.equal(ironBody.dimension, 'minecraft:overworld');
   assert.equal(ironBody.storage.length, 1);
   assert.ok(ironBody.afkSpot);
 
-  const blazeBody = JSON.parse(calls[1].init.body);
+  const blazeBody = JSON.parse(calls[2].init.body);
   assert.equal(blazeBody.dimension, 'minecraft:the_nether');
   assert.equal(blazeBody.storage.length, 0);
   assert.equal(blazeBody.afkSpot, null);
 
   const metadata = db.prepare('SELECT coordinates FROM farm_metadata WHERE farm_id = ?').get('granja-hierro') as any;
   assert.equal(metadata.coordinates, 'Almacen: 0, 0, 0; Punto AFK: 0, 0, 0');
+});
+
+test('importGranjas skips POST for a granja that already exists, but still upserts metadata', async (t) => {
+  const db = openDb(':memory:');
+  const calls: Array<{ url: string; init: any }> = [];
+  const fetchMock = mock.method(globalThis, 'fetch', async (url: string, init: any) => {
+    calls.push({ url, init });
+    if (!init?.method || init.method === 'GET') {
+      return new Response(JSON.stringify({ farms: [{ id: 'granja-hierro' }] }), { status: 200 });
+    }
+    return new Response(JSON.stringify(JSON.parse(init.body)), { status: 201 });
+  });
+  t.after(() => fetchMock.mock.restore());
+
+  await importGranjas(db, [
+    { id: 'granja-hierro', title: 'Granja de Hierro', coordinates: ['Almacen: 0, 0, 0'] },
+    { id: 'granja-blaze', title: 'Granja de Blaze', coordinates: ['Granja (Nether): 0, 0, 0'] },
+  ]);
+
+  // 1 GET /farms + 1 POST (only for granja-blaze, granja-hierro already exists)
+  assert.equal(calls.length, 2);
+  const postBody = JSON.parse(calls[1].init.body);
+  assert.equal(postBody.id, 'granja-blaze');
+
+  const metadata = db.prepare('SELECT coordinates FROM farm_metadata WHERE farm_id = ?').get('granja-hierro') as any;
+  assert.equal(metadata.coordinates, 'Almacen: 0, 0, 0');
 });
 
 test('importTareas maps status/priority, links project over farm, and imports subtasks + assignees', () => {

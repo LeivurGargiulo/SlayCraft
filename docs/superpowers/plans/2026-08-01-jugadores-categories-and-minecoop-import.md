@@ -487,7 +487,7 @@ done
 - [ ] **Step 2: Verify they're valid JSON and non-empty**
 
 Run: `node -e "for (const f of ['jugadores','proyectos','granjas','tareas']) { const d = require('./dashboard/server/src/scripts/minecoop-data/'+f+'.json'); console.log(f, d.length); }"`
-Expected: `jugadores 15`, `proyectos 13`, `granjas 32`, `tareas 30`
+Expected: `jugadores 15`, `proyectos 13`, `granjas 33`, `tareas 29`
 
 - [ ] **Step 3: Commit**
 
@@ -962,15 +962,15 @@ git commit -m "feat(dashboard): wire up import-minecoop CLI entrypoint"
 This talks to the live dashboard database and the live MCFarmManager — run it on the machine/environment where the dashboard server and MCFarmManager are actually reachable (same defaults `server.ts` uses: `DASHBOARD_DATA_DIR`, `MCFARMMANAGER_URL`, `MCFARMMANAGER_API_TOKEN`).
 
 Run: `cd dashboard/server && npm run import-minecoop`
-Expected: prints `Importados: 15 jugadores, 13 proyectos, 32 granjas, 30 tareas.`
+Expected: prints `Importados: 15 jugadores, 13 proyectos, 33 granjas, 29 tareas.`
 
 - [ ] **Step 6: Verify in the running dashboard**
 
 Hit the API (or open the UI) to spot-check:
 - `GET /api/players` — 15 rows, actividad matches minecoop.
 - `GET /api/projects` — 13 rows.
-- `GET /api/farms` — 32 farms (each with the fabricated `anchor: {0,64,0}` — expect them to look "broken" in the live view until real coordinates are entered by hand in the Granja detail UI, per the spec).
-- `GET /api/tasks` — 30 tasks, spot-check `granja-kelp`'s task has `project_id` set (not `farm_id`), and has 2 subtasks and 1 assignee.
+- `GET /api/farms` — 33 farms (each with the fabricated `anchor: {0,64,0}` — expect them to look "broken" in the live view until real coordinates are entered by hand in the Granja detail UI, per the spec).
+- `GET /api/tasks` — 29 tasks, spot-check `granja-kelp`'s task has `project_id` set (not `farm_id`), and has 2 subtasks and 1 assignee.
 
 No commit for this step — it's a data-only operation against a running system, not a code change.
 

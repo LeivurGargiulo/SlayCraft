@@ -22,8 +22,14 @@ export function importJugadores(db: Database.Database, jugadores: MinecoopJugado
 
 export function importProyectos(db: Database.Database, proyectos: MinecoopEntity[]): Map<string, number> {
   const idBySlug = new Map<string, number>();
+  const findExisting = db.prepare('SELECT id FROM projects WHERE name = ?');
   const insert = db.prepare('INSERT INTO projects (name, status, coordinates) VALUES (?, ?, ?)');
   for (const p of proyectos) {
+    const existing = findExisting.get(p.title) as { id: number } | undefined;
+    if (existing) {
+      idBySlug.set(p.id, existing.id);
+      continue;
+    }
     const info = insert.run(p.title, 'active', p.coordinates.join('; '));
     idBySlug.set(p.id, Number(info.lastInsertRowid));
   }
@@ -61,8 +67,12 @@ export async function importGranjas(db: Database.Database, granjas: MinecoopEnti
     `INSERT INTO farm_metadata (farm_id, notes, coordinates) VALUES (?, ?, ?)
      ON CONFLICT(farm_id) DO UPDATE SET notes = excluded.notes, coordinates = excluded.coordinates`
   );
+  const existing = (await mcfmFetch('/farms')) as { farms: Array<{ id: string }> };
+  const existingIds = new Set(existing.farms.map((f) => f.id));
   for (const granja of granjas) {
-    await mcfmFetch('/farms', { method: 'POST', body: buildFarmConfig(granja) });
+    if (!existingIds.has(granja.id)) {
+      await mcfmFetch('/farms', { method: 'POST', body: buildFarmConfig(granja) });
+    }
     const original = granja.coordinates.join('; ');
     upsertMetadata.run(granja.id, `Coordenadas originales de minecoop (placeholder, corregir en la UI): ${original}`, original);
   }
