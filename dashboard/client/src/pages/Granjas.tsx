@@ -56,6 +56,11 @@ export default function Granjas() {
         {farms.data!.farms.map((f) => (
           <Link key={f.id} to={`/granjas/${f.id}`}>
             <Card>
+              {f.images[0] ? (
+                <img src={`/uploads/${f.images[0].path}`} alt={f.name} className="mb-2 h-32 w-full rounded object-cover" />
+              ) : (
+                <div className="mb-2 flex h-32 w-full items-center justify-center rounded bg-base text-slate-600">Sin imagen</div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="font-medium">{f.name}</span>
                 <StatusBadge status={f.online ? 'online' : 'offline'} />
