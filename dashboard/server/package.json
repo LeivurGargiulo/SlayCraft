@@ -8,7 +8,8 @@
     "build": "tsc && cp src/schema.sql dist/",
     "start": "node dist/server.js",
     "test": "node --import tsx --test test/**/*.test.ts",
-    "set-password": "tsx src/scripts/set-password.ts"
+    "set-password": "tsx src/scripts/set-password.ts",
+    "import-minecoop": "tsx src/scripts/import-minecoop.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^9.3.1",

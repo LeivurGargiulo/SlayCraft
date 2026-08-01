@@ -134,3 +134,39 @@ export function importTareas(db: Database.Database, tareas: MinecoopTarea[], pro
     }
   }
 }
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { openDb } from '../db.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function loadFixture<T>(name: string): T {
+  const raw = fs.readFileSync(path.join(__dirname, 'minecoop-data', `${name}.json`), 'utf-8');
+  return JSON.parse(raw) as T;
+}
+
+async function main() {
+  const dataDir = process.env.DASHBOARD_DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
+  const db = openDb(path.join(dataDir, 'dashboard.sqlite'));
+
+  const jugadores = loadFixture<MinecoopJugador[]>('jugadores');
+  const proyectos = loadFixture<MinecoopEntity[]>('proyectos');
+  const granjas = loadFixture<MinecoopEntity[]>('granjas');
+  const tareas = loadFixture<MinecoopTarea[]>('tareas');
+
+  importJugadores(db, jugadores);
+  const projectIdBySlug = importProyectos(db, proyectos);
+  await importGranjas(db, granjas);
+  importTareas(db, tareas, projectIdBySlug);
+
+  console.log(`Importados: ${jugadores.length} jugadores, ${proyectos.length} proyectos, ${granjas.length} granjas, ${tareas.length} tareas.`);
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
