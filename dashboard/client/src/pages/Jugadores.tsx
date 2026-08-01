@@ -42,34 +42,25 @@ export default function Jugadores() {
 
   function renderPlayer(p: Player) {
     return (
-      <Card key={p.id} className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <PlayerSkin name={p.minecraft_name} />
-          <div>
-            <div className="flex items-center gap-2 font-medium">
-              {p.minecraft_name}
-              <StatusBadge status={liveNames.has(p.minecraft_name) ? 'online' : 'offline'} />
-            </div>
-            <div className="mt-1 flex items-center gap-2">
-              <Select
-                value={p.actividad}
-                onChange={(actividad) => updatePlayer.mutate({ id: p.id, actividad })}
-                options={ACTIVIDAD_OPTIONS}
-                className="w-32"
-              />
-              <input
-                defaultValue={p.note ?? ''}
-                onBlur={(e) => updatePlayer.mutate({ id: p.id, note: e.target.value || null })}
-                placeholder="Nota"
-                className="rounded border border-border bg-base px-2 py-1 text-sm"
-              />
-            </div>
-          </div>
+      <Card key={p.id} className="flex flex-col items-center gap-2 text-center">
+        <PlayerSkin name={p.minecraft_name} />
+        <div className="flex items-center gap-2 font-medium">
+          {p.minecraft_name}
+          <StatusBadge status={liveNames.has(p.minecraft_name) ? 'online' : 'offline'} />
         </div>
-        <button
-          onClick={() => setDeleteTarget(p.id)}
-          className="text-sm text-status-blocked hover:underline"
-        >
+        <Select
+          value={p.actividad}
+          onChange={(actividad) => updatePlayer.mutate({ id: p.id, actividad })}
+          options={ACTIVIDAD_OPTIONS}
+          className="w-32"
+        />
+        <input
+          defaultValue={p.note ?? ''}
+          onBlur={(e) => updatePlayer.mutate({ id: p.id, note: e.target.value || null })}
+          placeholder="Nota"
+          className="w-full rounded border border-border bg-base px-2 py-1 text-center text-sm"
+        />
+        <button onClick={() => setDeleteTarget(p.id)} className="text-sm text-status-blocked hover:underline">
           Eliminar
         </button>
       </Card>
@@ -108,7 +99,7 @@ export default function Jugadores() {
           <h2 className="font-mono text-lg text-slate-300">
             En línea <span className="text-sm font-normal text-slate-500">({onlinePlayers.length})</span>
           </h2>
-          {onlinePlayers.map(renderPlayer)}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">{onlinePlayers.map(renderPlayer)}</div>
         </section>
       )}
 
@@ -120,7 +111,7 @@ export default function Jugadores() {
             <h2 className="font-mono text-lg text-slate-300">
               {ACTIVIDAD_LABELS[actividad]} <span className="text-sm font-normal text-slate-500">({items.length})</span>
             </h2>
-            {items.map(renderPlayer)}
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">{items.map(renderPlayer)}</div>
           </section>
         );
       })}
