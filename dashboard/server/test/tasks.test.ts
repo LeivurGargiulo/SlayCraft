@@ -119,3 +119,33 @@ test('POST with status=done sets completed_at and is subject to archive sweep', 
   const stillFetchableDirectly = await app.inject({ method: 'GET', url: `/api/tasks/${taskId}`, headers: { cookie } });
   assert.equal(stillFetchableDirectly.json().archived, 1);
 });
+
+test('subtasks support rename and multi-assignee', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  const p1 = db.prepare("INSERT INTO players (minecraft_name) VALUES ('leivur')").run().lastInsertRowid;
+  const p2 = db.prepare("INSERT INTO players (minecraft_name) VALUES ('gargiulo')").run().lastInsertRowid;
+
+  const task = await app.inject({
+    method: 'POST', url: '/api/tasks', headers: { cookie }, payload: { title: 'Construir granja de melones' },
+  });
+  const taskId = task.json().id;
+
+  const subtask = await app.inject({
+    method: 'POST', url: `/api/tasks/${taskId}/subtasks`, headers: { cookie },
+    payload: { title: 'Comprar semillas', assignee_ids: [p1, p2] },
+  });
+  assert.equal(subtask.statusCode, 200);
+  assert.equal(subtask.json().assignees.length, 2);
+
+  const renamed = await app.inject({
+    method: 'PATCH', url: `/api/subtasks/${subtask.json().id}`, headers: { cookie },
+    payload: { title: 'Comprar semillas de melón', assignee_ids: [p1] },
+  });
+  assert.equal(renamed.json().title, 'Comprar semillas de melón');
+  assert.equal(renamed.json().assignees.length, 1);
+  assert.equal(renamed.json().assignees[0].minecraft_name, 'leivur');
+
+  const parentTask = await app.inject({ method: 'GET', url: `/api/tasks/${taskId}`, headers: { cookie } });
+  assert.equal(parentTask.json().subtasks[0].assignees.length, 1);
+});

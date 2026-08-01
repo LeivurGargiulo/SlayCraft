@@ -20,6 +20,7 @@ const subtaskInput = z.object({
   title: z.string().min(1),
   done: z.boolean().default(false),
   sort_order: z.number().int().default(0),
+  assignee_ids: z.array(z.number().int()).default([]),
 });
 
 interface TaskRow {
@@ -37,12 +38,27 @@ interface TaskRow {
   updated_at: string;
 }
 
+function hydrateSubtask(db: Database.Database, subtask: { id: number; task_id: number; title: string; done: number; sort_order: number }) {
+  const assignees = db
+    .prepare('SELECT p.* FROM players p JOIN subtask_assignees sa ON sa.player_id = p.id WHERE sa.subtask_id = ?')
+    .all(subtask.id);
+  return { ...subtask, assignees };
+}
+
+function setSubtaskAssignees(db: Database.Database, subtaskId: number, playerIds: number[]) {
+  db.prepare('DELETE FROM subtask_assignees WHERE subtask_id = ?').run(subtaskId);
+  const insert = db.prepare('INSERT INTO subtask_assignees (subtask_id, player_id) VALUES (?, ?)');
+  for (const playerId of playerIds) insert.run(subtaskId, playerId);
+}
+
 function hydrateTask(db: Database.Database, task: TaskRow) {
-  const subtasks = db.prepare('SELECT * FROM subtasks WHERE task_id = ? ORDER BY sort_order').all(task.id);
+  const subtasks = db.prepare('SELECT * FROM subtasks WHERE task_id = ? ORDER BY sort_order').all(task.id) as Array<{
+    id: number; task_id: number; title: string; done: number; sort_order: number;
+  }>;
   const assignees = db
     .prepare('SELECT p.* FROM players p JOIN task_assignees ta ON ta.player_id = p.id WHERE ta.task_id = ?')
     .all(task.id);
-  return { ...task, subtasks, assignees };
+  return { ...task, subtasks: subtasks.map((s) => hydrateSubtask(db, s)), assignees };
 }
 
 function setAssignees(db: Database.Database, taskId: number, playerIds: number[]) {
@@ -133,7 +149,10 @@ export function registerTaskRoutes(app: FastifyInstance, db: Database.Database) 
     const info = db
       .prepare('INSERT INTO subtasks (task_id, title, done, sort_order) VALUES (?, ?, ?, ?)')
       .run(taskId, body.title, body.done ? 1 : 0, body.sort_order);
-    return db.prepare('SELECT * FROM subtasks WHERE id = ?').get(info.lastInsertRowid);
+    setSubtaskAssignees(db, Number(info.lastInsertRowid), body.assignee_ids);
+    return hydrateSubtask(db, db.prepare('SELECT * FROM subtasks WHERE id = ?').get(info.lastInsertRowid) as {
+      id: number; task_id: number; title: string; done: number; sort_order: number;
+    });
   });
 
   app.patch('/api/subtasks/:id', async (req, reply) => {
@@ -149,7 +168,10 @@ export function registerTaskRoutes(app: FastifyInstance, db: Database.Database) 
       done: body.done !== undefined ? (body.done ? 1 : 0) : existing.done,
       sort_order: body.sort_order ?? existing.sort_order,
     });
-    return db.prepare('SELECT * FROM subtasks WHERE id = ?').get(id);
+    if (body.assignee_ids) setSubtaskAssignees(db, id, body.assignee_ids);
+    return hydrateSubtask(db, db.prepare('SELECT * FROM subtasks WHERE id = ?').get(id) as {
+      id: number; task_id: number; title: string; done: number; sort_order: number;
+    });
   });
 
   app.delete('/api/subtasks/:id', async (req, reply) => {
