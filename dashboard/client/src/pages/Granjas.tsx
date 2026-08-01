@@ -55,7 +55,7 @@ export default function Granjas() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {farms.data!.farms.map((f) => (
           <Link key={f.id} to={`/granjas/${f.id}`}>
-            <Card className="hover:border-gold">
+            <Card>
               <div className="flex items-center justify-between">
                 <span className="font-medium">{f.name}</span>
                 <StatusBadge status={f.online ? 'online' : 'offline'} />

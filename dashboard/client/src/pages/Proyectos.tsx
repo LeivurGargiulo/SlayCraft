@@ -31,7 +31,7 @@ export default function Proyectos() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(projects.data?.projects ?? []).map((p) => (
           <Link key={p.id} to={`/proyectos/${p.id}`}>
-            <Card className="hover:border-gold">
+            <Card>
               {p.images[0] ? (
                 <img src={`/uploads/${p.images[0].path}`} alt={p.name} className="mb-2 h-32 w-full rounded object-cover" />
               ) : (
