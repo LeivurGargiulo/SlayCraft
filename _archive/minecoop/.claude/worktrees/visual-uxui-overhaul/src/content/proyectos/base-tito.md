@@ -1,4 +1,0 @@
----
-images:
-  - ./img/construccion.webp
----

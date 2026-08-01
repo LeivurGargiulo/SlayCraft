@@ -1,5 +1,0 @@
-level: info
-pretty: true
-file:
-  enabled: false
-  path: logs/mfo.log

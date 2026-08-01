@@ -1,10 +1,10 @@
 services:
   mcserver:
-    build: ./servers/fabric
+    build: ./server
     hostname: mcserver
     stop_grace_period: 60s
     volumes:
-      - ./servers/fabric:/server
+      - ./server:/server
     ports:
       - "25564:25564"
     stdin_open: true
@@ -12,7 +12,7 @@ services:
     restart: unless-stopped
 
   server:
-    build: ./dashboard/server
+    build: ./slaycraft/dashboard/server
     environment:
       PORT: 3001
       MCFARMMANAGER_URL: ${MCFARMMANAGER_URL:-http://mcserver:8642}
@@ -26,7 +26,7 @@ services:
     restart: unless-stopped
 
   client:
-    build: ./dashboard/client
+    build: ./slaycraft/dashboard/client
     depends_on:
       - server
     restart: unless-stopped

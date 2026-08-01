@@ -1,4 +1,0 @@
-# Discord is off by default. Set enabled: true, fill in guildId/notifyChannelId, and set
-# DISCORD_BOT_TOKEN in the environment (see .env.example) to turn it on.
-enabled: false
-whitelist: []
