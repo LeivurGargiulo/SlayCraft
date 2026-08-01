@@ -27,7 +27,9 @@ export default function Jugadores() {
   const allPlayers = players.data?.players ?? [];
   const onlinePlayers = allPlayers.filter((p) => liveNames.has(p.minecraft_name));
   const byActividad = (actividad: Actividad) =>
-    allPlayers.filter((p) => p.actividad === actividad).sort((a, b) => a.minecraft_name.localeCompare(b.minecraft_name));
+    allPlayers
+      .filter((p) => p.actividad === actividad && !liveNames.has(p.minecraft_name))
+      .sort((a, b) => a.minecraft_name.localeCompare(b.minecraft_name));
 
   async function onCreate() {
     if (!name.trim()) return;
