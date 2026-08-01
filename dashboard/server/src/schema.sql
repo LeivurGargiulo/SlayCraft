@@ -23,11 +23,13 @@ CREATE TABLE IF NOT EXISTS tasks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT NOT NULL,
   description TEXT,
-  status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo','in_progress','blocked','done')),
+  status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo','in_progress','done')),
   priority TEXT NOT NULL DEFAULT 'med' CHECK (priority IN ('low','med','high')),
   due_date TEXT,
   farm_id TEXT,
   project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+  completed_at TEXT,
+  archived INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -44,6 +46,12 @@ CREATE TABLE IF NOT EXISTS task_assignees (
   task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
   PRIMARY KEY (task_id, player_id)
+);
+
+CREATE TABLE IF NOT EXISTS subtask_assignees (
+  subtask_id INTEGER NOT NULL REFERENCES subtasks(id) ON DELETE CASCADE,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  PRIMARY KEY (subtask_id, player_id)
 );
 
 CREATE TABLE IF NOT EXISTS project_images (

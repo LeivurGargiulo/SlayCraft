@@ -11,6 +11,26 @@ export function openDb(dbPath: string): Database.Database {
   db.pragma('foreign_keys = ON');
   const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf-8');
   db.exec(schema);
+  const tasksTableSql = (
+    db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'").get() as { sql: string } | undefined
+  )?.sql ?? '';
+  if (tasksTableSql.includes("'blocked'")) {
+    db.exec("UPDATE tasks SET status='todo' WHERE status='blocked'");
+    db.exec('ALTER TABLE tasks RENAME TO tasks_old');
+    db.exec(schema);
+    db.exec(`
+      INSERT INTO tasks (id, title, description, status, priority, due_date, farm_id, project_id, created_at, updated_at)
+      SELECT id, title, description, status, priority, due_date, farm_id, project_id, created_at, updated_at FROM tasks_old
+    `);
+    db.exec('DROP TABLE tasks_old');
+  }
+  const taskColumns = db.prepare('PRAGMA table_info(tasks)').all() as Array<{ name: string }>;
+  if (!taskColumns.some((c) => c.name === 'completed_at')) {
+    db.exec('ALTER TABLE tasks ADD COLUMN completed_at TEXT');
+  }
+  if (!taskColumns.some((c) => c.name === 'archived')) {
+    db.exec("ALTER TABLE tasks ADD COLUMN archived INTEGER NOT NULL DEFAULT 0");
+  }
   const projectColumns = db.prepare('PRAGMA table_info(projects)').all() as Array<{ name: string }>;
   if (!projectColumns.some((c) => c.name === 'coordinates')) {
     db.exec('ALTER TABLE projects ADD COLUMN coordinates TEXT');
