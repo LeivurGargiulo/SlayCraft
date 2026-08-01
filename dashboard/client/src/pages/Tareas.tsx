@@ -2,19 +2,20 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   useTasks, useCreateTask, useUpdateTask, useDeleteTask,
-  useAddSubtask, useUpdateSubtask, usePlayers, useFarms, useProjects,
+  useAddSubtask, useUpdateSubtask, useDeleteSubtask, usePlayers, useFarms, useProjects,
 } from '../api/hooks';
 import type { Task, TaskPriority, TaskStatus } from '../api/types';
 import Card from '../components/Card';
 import Modal from '../components/Modal';
+import ConfirmModal from '../components/ConfirmModal';
 import Select from '../components/Select';
 import MultiSelect from '../components/MultiSelect';
 import StatusBadge from '../components/StatusBadge';
 import PriorityBadge from '../components/PriorityBadge';
 
-const STATUSES: TaskStatus[] = ['todo', 'in_progress', 'blocked', 'done'];
+const STATUSES: TaskStatus[] = ['todo', 'in_progress', 'done'];
 const PRIORITY_LABEL: Record<TaskPriority, string> = { low: 'Baja', med: 'Media', high: 'Alta' };
-const STATUS_LABEL: Record<TaskStatus, string> = { todo: 'Pendiente', in_progress: 'En curso', blocked: 'Bloqueada', done: 'Hecha' };
+const STATUS_LABEL: Record<TaskStatus, string> = { todo: 'Pendiente', in_progress: 'En curso', done: 'Hecha' };
 
 export default function Tareas() {
   const tasks = useTasks();
@@ -26,6 +27,12 @@ export default function Tareas() {
   const deleteTask = useDeleteTask();
   const addSubtask = useAddSubtask();
   const updateSubtask = useUpdateSubtask();
+  const deleteSubtask = useDeleteSubtask();
+
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+  const [editingSubtaskId, setEditingSubtaskId] = useState<number | null>(null);
+  const [subtaskEditForm, setSubtaskEditForm] = useState<{ title: string; assignee_ids: number[] }>({ title: '', assignee_ids: [] });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -88,9 +95,27 @@ export default function Tareas() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="font-mono text-2xl text-gold">Tareas</h1>
-        <button onClick={openCreate} className="rounded bg-gold px-3 py-2 text-sm font-medium text-base hover:opacity-90">
-          + Nueva tarea
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded border border-border">
+            <button
+              onClick={() => setMode('view')}
+              className={`rounded-l px-3 py-1.5 text-sm ${mode === 'view' ? 'bg-gold text-base' : 'text-slate-300 hover:bg-panel'}`}
+            >
+              Ver
+            </button>
+            <button
+              onClick={() => setMode('edit')}
+              className={`rounded-r px-3 py-1.5 text-sm ${mode === 'edit' ? 'bg-gold text-base' : 'text-slate-300 hover:bg-panel'}`}
+            >
+              Editar
+            </button>
+          </div>
+          {mode === 'edit' && (
+            <button onClick={openCreate} className="rounded bg-gold px-3 py-2 text-sm font-medium text-base hover:opacity-90">
+              + Nueva tarea
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-2">
@@ -185,60 +210,121 @@ export default function Tareas() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Select
-                  value={t.status}
-                  onChange={(status) => updateTask.mutate({ id: t.id, status })}
-                  className="w-32"
-                  options={STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
-                />
-                <button onClick={() => openEdit(t)} className="text-sm text-cyan hover:underline">
-                  Editar
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm('¿Eliminar esta tarea?')) deleteTask.mutate(t.id);
-                  }}
-                  className="text-sm text-status-blocked hover:underline"
-                >
-                  Eliminar
-                </button>
+                {mode === 'edit' ? (
+                  <Select
+                    value={t.status}
+                    onChange={(status) => updateTask.mutate({ id: t.id, status })}
+                    className="w-32"
+                    options={STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
+                  />
+                ) : (
+                  <StatusBadge status={t.status} />
+                )}
+                {mode === 'edit' && (
+                  <>
+                    <button onClick={() => openEdit(t)} className="text-sm text-cyan hover:underline">
+                      Editar
+                    </button>
+                    <button onClick={() => setDeleteTarget(t.id)} className="text-sm text-status-blocked hover:underline">
+                      Eliminar
+                    </button>
+                  </>
+                )}
               </div>
             </div>
             {t.subtasks.length > 0 && (
               <ul className="mt-3 space-y-1 border-t border-border pt-2">
                 {t.subtasks.map((st) => (
-                  <li key={st.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={!!st.done}
-                      onChange={(e) => updateSubtask.mutate({ id: st.id, done: e.target.checked })}
-                    />
-                    <span className={st.done ? 'text-slate-500 line-through' : ''}>{st.title}</span>
+                  <li key={st.id} className="text-sm">
+                    {editingSubtaskId === st.id ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          value={subtaskEditForm.title}
+                          onChange={(e) => setSubtaskEditForm({ ...subtaskEditForm, title: e.target.value })}
+                          className="min-w-0 flex-1 rounded border border-border bg-base px-2 py-1 text-sm"
+                        />
+                        <MultiSelect
+                          values={subtaskEditForm.assignee_ids}
+                          onChange={(assignee_ids) => setSubtaskEditForm({ ...subtaskEditForm, assignee_ids })}
+                          placeholder="Sin asignar"
+                          options={(players.data?.players ?? []).map((p) => ({ value: p.id, label: p.minecraft_name }))}
+                          className="w-40"
+                        />
+                        <button
+                          onClick={() => {
+                            updateSubtask.mutate({ id: st.id, title: subtaskEditForm.title, assignee_ids: subtaskEditForm.assignee_ids });
+                            setEditingSubtaskId(null);
+                          }}
+                          className="text-cyan hover:underline"
+                        >
+                          Guardar
+                        </button>
+                        <button onClick={() => setEditingSubtaskId(null)} className="text-slate-400 hover:underline">
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={!!st.done}
+                          disabled={mode !== 'edit'}
+                          onChange={(e) => updateSubtask.mutate({ id: st.id, done: e.target.checked })}
+                        />
+                        <span className={st.done ? 'text-slate-500 line-through' : ''}>{st.title}</span>
+                        {st.assignees.length > 0 && (
+                          <span className="text-xs text-slate-500">({st.assignees.map((a) => a.minecraft_name).join(', ')})</span>
+                        )}
+                        {mode === 'edit' && (
+                          <span className="ml-auto flex gap-2 text-xs">
+                            <button
+                              onClick={() => {
+                                setEditingSubtaskId(st.id);
+                                setSubtaskEditForm({ title: st.title, assignee_ids: st.assignees.map((a) => a.id) });
+                              }}
+                              className="text-cyan hover:underline"
+                            >
+                              Editar
+                            </button>
+                            <button onClick={() => deleteSubtask.mutate(st.id)} className="text-status-blocked hover:underline">
+                              Eliminar
+                            </button>
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
             )}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const input = e.currentTarget.elements.namedItem('subtitle') as HTMLInputElement;
-                if (input.value.trim()) addSubtask.mutate({ taskId: t.id, title: input.value.trim() });
-                input.value = '';
-              }}
-              className="mt-2 flex gap-2"
-            >
-              <input name="subtitle" placeholder="Agregar subtarea…" className="flex-1 rounded border border-border bg-base px-2 py-1 text-sm" />
-              <button type="submit" className="text-sm text-cyan hover:underline">
-                Agregar
-              </button>
-            </form>
+            {mode === 'edit' && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const input = e.currentTarget.elements.namedItem('subtitle') as HTMLInputElement;
+                  if (input.value.trim()) addSubtask.mutate({ taskId: t.id, title: input.value.trim() });
+                  input.value = '';
+                }}
+                className="mt-2 flex gap-2"
+              >
+                <input name="subtitle" placeholder="Agregar subtarea…" className="flex-1 rounded border border-border bg-base px-2 py-1 text-sm" />
+                <button type="submit" className="text-sm text-cyan hover:underline">
+                  Agregar
+                </button>
+              </form>
+            )}
           </Card>
         ))}
         {visible.length === 0 && <p className="text-sm text-slate-500">No hay tareas en este filtro.</p>}
       </div>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar tarea' : 'Nueva tarea'}>
-        <div className="space-y-3">
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editing ? 'Editar tarea' : 'Nueva tarea'}
+        maxWidthClassName="max-w-3xl"
+      >
+        <div className="space-y-4">
           <input
             placeholder="Título"
             value={form.title}
@@ -251,11 +337,10 @@ export default function Tareas() {
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             className="w-full rounded border border-border bg-base px-3 py-2"
           />
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Select
               value={form.priority}
               onChange={(priority) => setForm({ ...form, priority })}
-              className="w-32"
               options={Object.entries(PRIORITY_LABEL).map(([v, label]) => ({ value: v as TaskPriority, label }))}
             />
             <input
@@ -264,12 +349,9 @@ export default function Tareas() {
               onChange={(e) => setForm({ ...form, due_date: e.target.value })}
               className="rounded border border-border bg-base px-3 py-2"
             />
-          </div>
-          <div className="flex gap-2">
             <Select
               value={form.farm_id}
               onChange={(farm_id) => setForm({ ...form, farm_id })}
-              className="flex-1"
               searchable
               options={[
                 { value: '', label: 'Sin asignar (granja)' },
@@ -279,7 +361,6 @@ export default function Tareas() {
             <Select
               value={form.project_id}
               onChange={(project_id) => setForm({ ...form, project_id })}
-              className="flex-1"
               searchable
               options={[
                 { value: '', label: 'Sin asignar (proyecto)' },
@@ -306,6 +387,18 @@ export default function Tareas() {
           )}
         </div>
       </Modal>
+
+      <ConfirmModal
+        open={deleteTarget !== null}
+        title="Eliminar tarea"
+        message="¿Eliminar esta tarea? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget !== null) deleteTask.mutate(deleteTarget);
+          setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }
