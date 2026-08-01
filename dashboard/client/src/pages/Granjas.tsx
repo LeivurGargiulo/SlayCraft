@@ -63,7 +63,10 @@ export default function Granjas() {
               )}
               <div className="flex items-center justify-between">
                 <span className="font-medium">{f.name}</span>
-                <StatusBadge status={f.online ? 'online' : 'offline'} />
+                <div className="flex items-center gap-1">
+                  {f.metadata.manual && <span className="rounded bg-base px-2 py-0.5 text-xs text-cyan">Manual</span>}
+                  <StatusBadge status={f.online ? 'online' : 'offline'} />
+                </div>
               </div>
               <div className="mt-2 font-mono text-sm text-slate-400">
                 {f.entityCount} entidades · {f.storageItemCount} ítems almacenados

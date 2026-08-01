@@ -184,7 +184,10 @@ export default function GranjaDetail() {
         ← Granjas
       </Link>
       <div className="flex items-center justify-between">
-        <h1 className="font-mono text-2xl text-gold">{f.name}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="font-mono text-2xl text-gold">{f.name}</h1>
+          {f.metadata.manual && <span className="rounded bg-base px-2 py-0.5 text-xs text-cyan">Manual</span>}
+        </div>
         <div className="flex gap-2">
           <button onClick={startEditConfig} className="rounded border border-border px-3 py-1.5 text-sm text-cyan hover:bg-cyan/10">
             Editar configuración
