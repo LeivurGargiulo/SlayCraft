@@ -29,3 +29,32 @@ test('player CRUD', async () => {
   const del = await app.inject({ method: 'DELETE', url: `/api/players/${player.id}`, headers: { cookie } });
   assert.equal(del.statusCode, 204);
 });
+
+test('player actividad defaults to ocasional and can be updated', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+
+  const create = await app.inject({
+    method: 'POST',
+    url: '/api/players',
+    headers: { cookie },
+    payload: { minecraft_name: 'lei' },
+  });
+  assert.equal(create.json().actividad, 'ocasional');
+
+  const update = await app.inject({
+    method: 'PATCH',
+    url: `/api/players/${create.json().id}`,
+    headers: { cookie },
+    payload: { actividad: 'activo' },
+  });
+  assert.equal(update.json().actividad, 'activo');
+
+  const rejected = await app.inject({
+    method: 'POST',
+    url: '/api/players',
+    headers: { cookie },
+    payload: { minecraft_name: 'invalido', actividad: 'nope' },
+  });
+  assert.equal(rejected.statusCode, 400);
+});
