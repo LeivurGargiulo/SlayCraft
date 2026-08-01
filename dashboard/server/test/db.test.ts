@@ -39,3 +39,19 @@ test('rejects an invalid task status via CHECK constraint', () => {
     db.prepare("INSERT INTO tasks (title, status) VALUES ('x', 'nope')").run();
   });
 });
+
+test('players table has an actividad column defaulting to ocasional', () => {
+  const db = openDb(':memory:');
+  const columns = db.prepare('PRAGMA table_info(players)').all().map((c: any) => c.name);
+  assert.ok(columns.includes('actividad'), 'players table missing actividad column');
+  db.prepare("INSERT INTO players (minecraft_name) VALUES ('sinactividad')").run();
+  const row = db.prepare("SELECT actividad FROM players WHERE minecraft_name = 'sinactividad'").get() as any;
+  assert.equal(row.actividad, 'ocasional');
+});
+
+test('rejects an invalid players.actividad via CHECK constraint', () => {
+  const db = openDb(':memory:');
+  assert.throws(() => {
+    db.prepare("INSERT INTO players (minecraft_name, actividad) VALUES ('x', 'nope')").run();
+  });
+});

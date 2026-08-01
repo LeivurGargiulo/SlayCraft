@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS players (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   minecraft_name TEXT NOT NULL UNIQUE,
   note TEXT,
+  actividad TEXT NOT NULL DEFAULT 'ocasional' CHECK (actividad IN ('activo','ocasional','inactivo')),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
