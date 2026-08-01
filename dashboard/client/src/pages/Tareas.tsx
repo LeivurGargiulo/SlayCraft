@@ -33,6 +33,14 @@ export default function Tareas() {
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [editingSubtaskId, setEditingSubtaskId] = useState<number | null>(null);
   const [subtaskEditForm, setSubtaskEditForm] = useState<{ title: string; assignee_ids: number[] }>({ title: '', assignee_ids: [] });
+  const [subtaskEditError, setSubtaskEditError] = useState<string | null>(null);
+  const [subtaskDeleteTarget, setSubtaskDeleteTarget] = useState<number | null>(null);
+
+  function closeSubtaskEditor() {
+    setEditingSubtaskId(null);
+    setSubtaskEditForm({ title: '', assignee_ids: [] });
+    setSubtaskEditError(null);
+  }
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -98,12 +106,19 @@ export default function Tareas() {
         <div className="flex items-center gap-2">
           <div className="flex rounded border border-border">
             <button
-              onClick={() => setMode('view')}
+              type="button"
+              aria-pressed={mode === 'view'}
+              onClick={() => {
+                setMode('view');
+                closeSubtaskEditor();
+              }}
               className={`rounded-l px-3 py-1.5 text-sm ${mode === 'view' ? 'bg-gold text-base' : 'text-slate-300 hover:bg-panel'}`}
             >
               Ver
             </button>
             <button
+              type="button"
+              aria-pressed={mode === 'edit'}
               onClick={() => setMode('edit')}
               className={`rounded-r px-3 py-1.5 text-sm ${mode === 'edit' ? 'bg-gold text-base' : 'text-slate-300 hover:bg-panel'}`}
             >
@@ -236,7 +251,7 @@ export default function Tareas() {
               <ul className="mt-3 space-y-1 border-t border-border pt-2">
                 {t.subtasks.map((st) => (
                   <li key={st.id} className="text-sm">
-                    {editingSubtaskId === st.id ? (
+                    {mode === 'edit' && editingSubtaskId === st.id ? (
                       <div className="flex flex-wrap items-center gap-2">
                         <input
                           value={subtaskEditForm.title}
@@ -251,17 +266,28 @@ export default function Tareas() {
                           className="w-40"
                         />
                         <button
-                          onClick={() => {
-                            updateSubtask.mutate({ id: st.id, title: subtaskEditForm.title, assignee_ids: subtaskEditForm.assignee_ids });
-                            setEditingSubtaskId(null);
+                          type="button"
+                          onClick={async () => {
+                            const title = subtaskEditForm.title.trim();
+                            if (!title) {
+                              setSubtaskEditError('El título no puede estar vacío.');
+                              return;
+                            }
+                            try {
+                              await updateSubtask.mutateAsync({ id: st.id, title, assignee_ids: subtaskEditForm.assignee_ids });
+                              closeSubtaskEditor();
+                            } catch {
+                              setSubtaskEditError('No se pudo guardar la subtarea.');
+                            }
                           }}
                           className="text-cyan hover:underline"
                         >
                           Guardar
                         </button>
-                        <button onClick={() => setEditingSubtaskId(null)} className="text-slate-400 hover:underline">
+                        <button type="button" onClick={closeSubtaskEditor} className="text-slate-400 hover:underline">
                           Cancelar
                         </button>
+                        {subtaskEditError && <p className="w-full text-xs text-status-blocked">{subtaskEditError}</p>}
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
@@ -278,15 +304,17 @@ export default function Tareas() {
                         {mode === 'edit' && (
                           <span className="ml-auto flex gap-2 text-xs">
                             <button
+                              type="button"
                               onClick={() => {
                                 setEditingSubtaskId(st.id);
                                 setSubtaskEditForm({ title: st.title, assignee_ids: st.assignees.map((a) => a.id) });
+                                setSubtaskEditError(null);
                               }}
                               className="text-cyan hover:underline"
                             >
                               Editar
                             </button>
-                            <button onClick={() => deleteSubtask.mutate(st.id)} className="text-status-blocked hover:underline">
+                            <button type="button" onClick={() => setSubtaskDeleteTarget(st.id)} className="text-status-blocked hover:underline">
                               Eliminar
                             </button>
                           </span>
@@ -397,6 +425,18 @@ export default function Tareas() {
         onConfirm={() => {
           if (deleteTarget !== null) deleteTask.mutate(deleteTarget);
           setDeleteTarget(null);
+        }}
+      />
+
+      <ConfirmModal
+        open={subtaskDeleteTarget !== null}
+        title="Eliminar subtarea"
+        message="¿Eliminar esta subtarea? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        onCancel={() => setSubtaskDeleteTarget(null)}
+        onConfirm={() => {
+          if (subtaskDeleteTarget !== null) deleteSubtask.mutate(subtaskDeleteTarget);
+          setSubtaskDeleteTarget(null);
         }}
       />
     </div>
