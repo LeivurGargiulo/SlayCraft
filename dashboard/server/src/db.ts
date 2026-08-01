@@ -15,26 +15,28 @@ export function openDb(dbPath: string): Database.Database {
     db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'").get() as { sql: string } | undefined
   )?.sql ?? '';
   if (tasksTableSql.includes("'blocked'")) {
-    db.exec("UPDATE tasks SET status='todo' WHERE status='blocked'");
-    db.exec('ALTER TABLE tasks RENAME TO tasks_old');
-    db.exec('ALTER TABLE subtasks RENAME TO subtasks_old');
-    db.exec('ALTER TABLE task_assignees RENAME TO task_assignees_old');
-    db.exec(schema);
-    db.exec(`
-      INSERT INTO tasks (id, title, description, status, priority, due_date, farm_id, project_id, created_at, updated_at)
-      SELECT id, title, description, status, priority, due_date, farm_id, project_id, created_at, updated_at FROM tasks_old
-    `);
-    db.exec(`
-      INSERT INTO subtasks (id, task_id, title, done, sort_order)
-      SELECT id, task_id, title, done, sort_order FROM subtasks_old
-    `);
-    db.exec(`
-      INSERT INTO task_assignees (task_id, player_id)
-      SELECT task_id, player_id FROM task_assignees_old
-    `);
-    db.exec('DROP TABLE tasks_old');
-    db.exec('DROP TABLE subtasks_old');
-    db.exec('DROP TABLE task_assignees_old');
+    db.transaction(() => {
+      db.exec("UPDATE tasks SET status='todo' WHERE status='blocked'");
+      db.exec('ALTER TABLE tasks RENAME TO tasks_old');
+      db.exec('ALTER TABLE subtasks RENAME TO subtasks_old');
+      db.exec('ALTER TABLE task_assignees RENAME TO task_assignees_old');
+      db.exec(schema);
+      db.exec(`
+        INSERT INTO tasks (id, title, description, status, priority, due_date, farm_id, project_id, created_at, updated_at)
+        SELECT id, title, description, status, priority, due_date, farm_id, project_id, created_at, updated_at FROM tasks_old
+      `);
+      db.exec(`
+        INSERT INTO subtasks (id, task_id, title, done, sort_order)
+        SELECT id, task_id, title, done, sort_order FROM subtasks_old
+      `);
+      db.exec(`
+        INSERT INTO task_assignees (task_id, player_id)
+        SELECT task_id, player_id FROM task_assignees_old
+      `);
+      db.exec('DROP TABLE tasks_old');
+      db.exec('DROP TABLE subtasks_old');
+      db.exec('DROP TABLE task_assignees_old');
+    })();
   }
   const taskColumns = db.prepare('PRAGMA table_info(tasks)').all() as Array<{ name: string }>;
   if (!taskColumns.some((c) => c.name === 'completed_at')) {

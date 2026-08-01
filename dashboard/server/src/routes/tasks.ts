@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
 
-const STATUSES = ['todo', 'in_progress', 'blocked', 'done'] as const;
+const STATUSES = ['todo', 'in_progress', 'done'] as const;
 const PRIORITIES = ['low', 'med', 'high'] as const;
 
 const taskInput = z.object({
@@ -61,6 +61,10 @@ function hydrateTask(db: Database.Database, task: TaskRow) {
   return { ...task, subtasks: subtasks.map((s) => hydrateSubtask(db, s)), assignees };
 }
 
+function sqlNow(db: Database.Database): string {
+  return (db.prepare("SELECT datetime('now') AS now").get() as { now: string }).now;
+}
+
 function setAssignees(db: Database.Database, taskId: number, playerIds: number[]) {
   db.prepare('DELETE FROM task_assignees WHERE task_id = ?').run(taskId);
   const insert = db.prepare('INSERT INTO task_assignees (task_id, player_id) VALUES (?, ?)');
@@ -89,7 +93,7 @@ export function registerTaskRoutes(app: FastifyInstance, db: Database.Database) 
 
   app.post('/api/tasks', async (req, reply) => {
     const body = taskInput.parse(req.body);
-    const completed_at = body.status === 'done' ? new Date().toISOString() : null;
+    const completed_at = body.status === 'done' ? sqlNow(db) : null;
     const info = db
       .prepare(
         `INSERT INTO tasks (title, description, status, priority, due_date, farm_id, project_id, completed_at, archived)
@@ -120,7 +124,7 @@ export function registerTaskRoutes(app: FastifyInstance, db: Database.Database) 
     let completed_at = existing.completed_at;
     let archived = existing.archived;
     if (nextStatus === 'done' && existing.status !== 'done') {
-      completed_at = new Date().toISOString();
+      completed_at = sqlNow(db);
     } else if (nextStatus !== 'done' && existing.status === 'done') {
       completed_at = null;
       archived = 0;
