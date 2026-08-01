@@ -33,3 +33,4 @@ Recurring task types in this repo and which skill covers them — check this bef
 - LLM/agent work in mineflayer-agent (Gemini+OpenAI calls, tool schemas, prompts) → `claude-api` reference skill for provider/model/pricing questions, don't answer from memory
 - Committing + opening a PR together → `commit-commands:commit-push-pr`
 - After a session that changed conventions or repo layout → `claude-md-management:revise-claude-md` to keep this file current
+- Whole-repo architecture or cross-service relationship questions (dashboard ↔ MCFarmManager HTTP, bot ↔ dashboard DB) → `graphify` over ad-hoc grepping across all 4 pieces; distinct from `serena` (single-symbol lookup) — use graphify when the question spans services, not one file
