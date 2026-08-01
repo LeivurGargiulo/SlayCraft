@@ -71,7 +71,14 @@ export default function Overview() {
             {needsAttention.slice(0, 5).map((t) => (
               <motion.div key={t.id} variants={fadeUp}>
                 <Card className="flex items-center justify-between">
-                  <span>{t.title}</span>
+                  <div>
+                    <div>{t.title}</div>
+                    {t.assignees.length > 0 && (
+                      <div className="mt-1 text-xs text-slate-400">
+                        {t.assignees.map((a) => a.minecraft_name).join(', ')}
+                      </div>
+                    )}
+                  </div>
                   <StatusBadge status={t.status} />
                 </Card>
               </motion.div>
