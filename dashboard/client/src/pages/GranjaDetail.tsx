@@ -310,20 +310,22 @@ export default function GranjaDetail() {
           )}
         </Card>
 
-        <Card>
-          <h2 className="mb-2 font-mono text-slate-200">Ocupantes</h2>
-          {f.occupants.length > 0 ? (
-            <div className="space-y-1">
-              {f.occupants.map((o) => (
-                <p key={o.name} className="text-sm">
-                  {o.name} {o.isFakePlayer ? '(bot)' : ''}
-                </p>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">Sin ocupantes en el punto de AFK.</p>
-          )}
-        </Card>
+        {f.afkSpot && (
+          <Card>
+            <h2 className="mb-2 font-mono text-slate-200">Ocupantes</h2>
+            {f.occupants.length > 0 ? (
+              <div className="space-y-1">
+                {f.occupants.map((o) => (
+                  <p key={o.name} className="text-sm">
+                    {o.name} {o.isFakePlayer ? '(bot)' : ''}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">Sin ocupantes en el punto de AFK.</p>
+            )}
+          </Card>
+        )}
 
         <Card>
           <h2 className="mb-2 font-mono text-slate-200">Entidades</h2>
