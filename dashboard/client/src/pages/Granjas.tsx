@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useFarms, useCreateFarm, useUpdateFarmMetadata } from '../api/hooks';
+import type { FarmSummary } from '../api/types';
 import Card from '../components/Card';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
@@ -11,6 +12,19 @@ const DIMENSIONS = [
   { value: 'minecraft:the_nether', label: 'Nether' },
   { value: 'minecraft:the_end', label: 'End' },
 ];
+
+type FarmCategory = 'encendida' | 'rota' | 'apagada';
+
+function categorize(f: FarmSummary): FarmCategory {
+  if (f.metadata.off) return 'apagada';
+  return f.online ? 'encendida' : 'rota';
+}
+
+const CATEGORY_LABELS: Record<FarmCategory, string> = {
+  encendida: 'Encendidas',
+  rota: 'Rotas',
+  apagada: 'Apagadas',
+};
 
 export default function Granjas() {
   const farms = useFarms();
@@ -79,71 +93,80 @@ export default function Granjas() {
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {farms.data!.farms
-          .filter((f) => showHidden || !f.metadata.hidden)
-          .map((f) => (
-          <Link key={f.id} to={`/granjas/${f.id}`} className="relative">
-            {mode === 'edit' && (
-              <div className="absolute right-2 top-2 z-10 flex gap-1">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    updateMetadata.mutate({ id: f.id, ...f.metadata, off: !f.metadata.off });
-                  }}
-                  className="rounded bg-base/80 px-2 py-1 text-xs text-slate-400 hover:text-cyan"
-                >
-                  {f.metadata.off ? 'Encender' : 'Apagar'}
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    updateMetadata.mutate({ id: f.id, ...f.metadata, hidden: !f.metadata.hidden });
-                  }}
-                  className="rounded bg-base/80 px-2 py-1 text-xs text-slate-400 hover:text-cyan"
-                >
-                  {f.metadata.hidden ? 'Mostrar' : 'Ocultar'}
-                </button>
-              </div>
-            )}
-            <Card>
-              {f.images[0] ? (
-                <img src={`/uploads/${f.images[0].path}`} alt={f.name} className="mb-2 h-32 w-full rounded object-cover" />
-              ) : (
-                <div className="mb-2 flex h-32 w-full items-center justify-center rounded bg-base text-slate-600">
-                  <svg viewBox="0 0 24 24" className="h-10 w-10 fill-current" aria-hidden="true">
-                    <path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm1 2v10h14V7H5Zm2 8 3.5-4.5 2.5 3 3-4L18 15H7Z" />
-                  </svg>
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{f.name}</span>
-                <div className="flex items-center gap-1">
-                  {f.metadata.manual && <span className="rounded bg-base px-2 py-0.5 text-xs text-cyan">Manual</span>}
-                  {f.metadata.hidden && <span className="rounded bg-base px-2 py-0.5 text-xs text-slate-400">Oculta</span>}
-                  {f.metadata.off && <span className="rounded bg-base px-2 py-0.5 text-xs text-slate-400">Apagada</span>}
-                  <StatusBadge status={f.online ? 'online' : 'offline'} />
-                </div>
-              </div>
-              <div className="mt-2 font-mono text-sm text-slate-400">
-                {f.entityCount} entidades · {f.storageItemCount} ítems almacenados
-              </div>
-              {f.metadata.tags.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {f.metadata.tags.map((t) => (
-                    <span key={t} className="rounded bg-base px-2 py-0.5 text-xs text-cyan">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </Card>
-          </Link>
-        ))}
-        {farms.data!.farms.length === 0 && <p className="text-sm text-slate-500">No hay granjas configuradas en MCFarmManager.</p>}
-      </div>
+      {(['encendida', 'rota', 'apagada'] as const).map((category) => {
+        const categoryFarms = farms.data!.farms.filter(
+          (f) => (showHidden || !f.metadata.hidden) && categorize(f) === category
+        );
+        if (categoryFarms.length === 0) return null;
+        return (
+          <div key={category} className="space-y-2">
+            <h2 className="font-mono text-lg text-slate-200">{CATEGORY_LABELS[category]}</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {categoryFarms.map((f) => (
+                <Link key={f.id} to={`/granjas/${f.id}`} className="relative">
+                  {mode === 'edit' && (
+                    <div className="absolute right-2 top-2 z-10 flex gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          updateMetadata.mutate({ id: f.id, ...f.metadata, off: !f.metadata.off });
+                        }}
+                        className="rounded bg-base/80 px-2 py-1 text-xs text-slate-400 hover:text-cyan"
+                      >
+                        {f.metadata.off ? 'Encender' : 'Apagar'}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          updateMetadata.mutate({ id: f.id, ...f.metadata, hidden: !f.metadata.hidden });
+                        }}
+                        className="rounded bg-base/80 px-2 py-1 text-xs text-slate-400 hover:text-cyan"
+                      >
+                        {f.metadata.hidden ? 'Mostrar' : 'Ocultar'}
+                      </button>
+                    </div>
+                  )}
+                  <Card>
+                    {f.images[0] ? (
+                      <img src={`/uploads/${f.images[0].path}`} alt={f.name} className="mb-2 h-32 w-full rounded object-cover" />
+                    ) : (
+                      <div className="mb-2 flex h-32 w-full items-center justify-center rounded bg-base text-slate-600">
+                        <svg viewBox="0 0 24 24" className="h-10 w-10 fill-current" aria-hidden="true">
+                          <path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm1 2v10h14V7H5Zm2 8 3.5-4.5 2.5 3 3-4L18 15H7Z" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{f.name}</span>
+                      <div className="flex items-center gap-1">
+                        {f.metadata.manual && <span className="rounded bg-base px-2 py-0.5 text-xs text-cyan">Manual</span>}
+                        {f.metadata.hidden && <span className="rounded bg-base px-2 py-0.5 text-xs text-slate-400">Oculta</span>}
+                        {f.metadata.off && <span className="rounded bg-base px-2 py-0.5 text-xs text-slate-400">Apagada</span>}
+                        <StatusBadge status={f.online ? 'online' : 'offline'} />
+                      </div>
+                    </div>
+                    <div className="mt-2 font-mono text-sm text-slate-400">
+                      {f.entityCount} entidades · {f.storageItemCount} ítems almacenados
+                    </div>
+                    {f.metadata.tags.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {f.metadata.tags.map((t) => (
+                          <span key={t} className="rounded bg-base px-2 py-0.5 text-xs text-cyan">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      {farms.data!.farms.length === 0 && <p className="text-sm text-slate-500">No hay granjas configuradas en MCFarmManager.</p>}
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Nueva granja">
         <div className="space-y-3">

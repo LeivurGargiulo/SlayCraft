@@ -1,7 +1,7 @@
 // dashboard/client/src/pages/Overview.tsx
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useTasks, useFarms, useLivePlayers, usePerformance } from '../api/hooks';
+import { useTasks, useUpdateTask, useFarms, useLivePlayers, usePerformance } from '../api/hooks';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
 import { fadeUp, staggerContainer } from '../lib/motion';
@@ -9,6 +9,7 @@ import { useAnimatedNumber } from '../lib/useAnimatedNumber';
 
 export default function Overview() {
   const tasks = useTasks();
+  const updateTask = useUpdateTask();
   const farms = useFarms();
   const livePlayers = useLivePlayers();
   const performance = usePerformance();
@@ -23,11 +24,17 @@ export default function Overview() {
       !f.metadata.off &&
       ((!f.metadata.manual && !f.online) || (f.storageCapacity > 0 && f.storageItemCount > 0.9 * f.storageCapacity))
   );
-  const healthyFarmCount = (farms.data?.farms.length ?? 0) - flaggedFarms.length;
+
+  const visibleFarms = (farms.data?.farms ?? []).filter((f) => !f.metadata.hidden);
+  const encendidaCount = visibleFarms.filter((f) => !f.metadata.off && f.online).length;
+  const rotaCount = visibleFarms.filter((f) => !f.metadata.off && !f.online).length;
+  const apagadaCount = visibleFarms.filter((f) => f.metadata.off).length;
 
   const animatedTps = useAnimatedNumber(performance.data?.tps ?? 0);
   const animatedPlayers = useAnimatedNumber(livePlayers.data?.players.length ?? 0);
-  const animatedHealthyFarms = useAnimatedNumber(healthyFarmCount);
+  const animatedEncendida = useAnimatedNumber(encendidaCount);
+  const animatedRota = useAnimatedNumber(rotaCount);
+  const animatedApagada = useAnimatedNumber(apagadaCount);
 
   return (
     <div className="space-y-6">
@@ -55,11 +62,31 @@ export default function Overview() {
         </motion.div>
         <motion.div variants={fadeUp}>
           <Card>
-            <div className="text-sm text-slate-400">Granjas saludables</div>
+            <div className="text-sm text-slate-400">Granjas encendidas</div>
             {farms.isError ? (
               <div className="font-mono text-3xl text-status-blocked">—</div>
             ) : (
-              <div className="font-mono text-3xl text-status-done">{Math.round(animatedHealthyFarms)}</div>
+              <div className="font-mono text-3xl text-status-done">{Math.round(animatedEncendida)}</div>
+            )}
+          </Card>
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <Card>
+            <div className="text-sm text-slate-400">Granjas rotas</div>
+            {farms.isError ? (
+              <div className="font-mono text-3xl text-status-blocked">—</div>
+            ) : (
+              <div className="font-mono text-3xl text-status-blocked">{Math.round(animatedRota)}</div>
+            )}
+          </Card>
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <Card>
+            <div className="text-sm text-slate-400">Granjas apagadas</div>
+            {farms.isError ? (
+              <div className="font-mono text-3xl text-status-blocked">—</div>
+            ) : (
+              <div className="font-mono text-3xl text-slate-400">{Math.round(animatedApagada)}</div>
             )}
           </Card>
         </motion.div>
@@ -82,7 +109,19 @@ export default function Overview() {
                       </div>
                     )}
                   </div>
-                  <StatusBadge status={t.status} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={t.status} />
+                    {t.status !== 'done' && (
+                      <button
+                        type="button"
+                        onClick={() => updateTask.mutate({ id: t.id, status: 'done' })}
+                        disabled={updateTask.isPending}
+                        className="rounded border border-status-done/40 px-2 py-1 text-xs text-status-done hover:bg-status-done/10 disabled:opacity-50"
+                      >
+                        Completar
+                      </button>
+                    )}
+                  </div>
                 </Card>
               </motion.div>
             ))}
