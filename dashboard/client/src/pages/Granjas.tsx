@@ -18,6 +18,7 @@ export default function Granjas() {
   const updateMetadata = useUpdateFarmMetadata();
   const [modalOpen, setModalOpen] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [id, setId] = useState('');
   const [name, setName] = useState('');
   const [dimension, setDimension] = useState('minecraft:overworld');
@@ -55,6 +56,24 @@ export default function Granjas() {
             <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
             Mostrar ocultas
           </label>
+          <div className="flex rounded border border-border">
+            <button
+              type="button"
+              aria-pressed={mode === 'view'}
+              onClick={() => setMode('view')}
+              className={`rounded-l px-3 py-1.5 text-sm ${mode === 'view' ? 'bg-gold text-base' : 'text-slate-300 hover:bg-panel'}`}
+            >
+              Ver
+            </button>
+            <button
+              type="button"
+              aria-pressed={mode === 'edit'}
+              onClick={() => setMode('edit')}
+              className={`rounded-r px-3 py-1.5 text-sm ${mode === 'edit' ? 'bg-gold text-base' : 'text-slate-300 hover:bg-panel'}`}
+            >
+              Editar
+            </button>
+          </div>
           <button onClick={() => setModalOpen(true)} className="rounded bg-gold px-3 py-2 text-sm font-medium text-base hover:opacity-90">
             + Nueva granja
           </button>
@@ -65,16 +84,30 @@ export default function Granjas() {
           .filter((f) => showHidden || !f.metadata.hidden)
           .map((f) => (
           <Link key={f.id} to={`/granjas/${f.id}`} className="relative">
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                updateMetadata.mutate({ id: f.id, ...f.metadata, hidden: !f.metadata.hidden });
-              }}
-              className="absolute right-2 top-2 z-10 rounded bg-base/80 px-2 py-1 text-xs text-slate-400 hover:text-cyan"
-            >
-              {f.metadata.hidden ? 'Mostrar' : 'Ocultar'}
-            </button>
+            {mode === 'edit' && (
+              <div className="absolute right-2 top-2 z-10 flex gap-1">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    updateMetadata.mutate({ id: f.id, ...f.metadata, off: !f.metadata.off });
+                  }}
+                  className="rounded bg-base/80 px-2 py-1 text-xs text-slate-400 hover:text-cyan"
+                >
+                  {f.metadata.off ? 'Encender' : 'Apagar'}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    updateMetadata.mutate({ id: f.id, ...f.metadata, hidden: !f.metadata.hidden });
+                  }}
+                  className="rounded bg-base/80 px-2 py-1 text-xs text-slate-400 hover:text-cyan"
+                >
+                  {f.metadata.hidden ? 'Mostrar' : 'Ocultar'}
+                </button>
+              </div>
+            )}
             <Card>
               {f.images[0] ? (
                 <img src={`/uploads/${f.images[0].path}`} alt={f.name} className="mb-2 h-32 w-full rounded object-cover" />
