@@ -48,9 +48,9 @@ export default function Granjas() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-mono text-2xl text-gold">Granjas</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-1.5 text-sm text-slate-400">
             <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
             Mostrar ocultas
@@ -90,6 +90,7 @@ export default function Granjas() {
                 <div className="flex items-center gap-1">
                   {f.metadata.manual && <span className="rounded bg-base px-2 py-0.5 text-xs text-cyan">Manual</span>}
                   {f.metadata.hidden && <span className="rounded bg-base px-2 py-0.5 text-xs text-slate-400">Oculta</span>}
+                  {f.metadata.off && <span className="rounded bg-base px-2 py-0.5 text-xs text-slate-400">Apagada</span>}
                   <StatusBadge status={f.online ? 'online' : 'offline'} />
                 </div>
               </div>

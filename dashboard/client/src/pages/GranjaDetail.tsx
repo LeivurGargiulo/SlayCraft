@@ -111,6 +111,7 @@ export default function GranjaDetail() {
   const [editingMeta, setEditingMeta] = useState(false);
   const [manual, setManual] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const [off, setOff] = useState(false);
   const [expectedRates, setExpectedRates] = useState<Array<{ itemId: string; rate: string }>>([]);
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -127,6 +128,7 @@ export default function GranjaDetail() {
     setExpectedRates(Object.entries(f.metadata.expected_rates).map(([itemId, rate]) => ({ itemId, rate: String(rate) })));
     setManual(f.metadata.manual);
     setHidden(f.metadata.hidden);
+    setOff(f.metadata.off);
     setEditingMeta(true);
   }
 
@@ -142,6 +144,7 @@ export default function GranjaDetail() {
       expected_rates,
       manual,
       hidden,
+      off,
     });
     setEditingMeta(false);
   }
@@ -186,12 +189,12 @@ export default function GranjaDetail() {
       <Link to="/granjas" className="text-sm text-cyan hover:underline">
         ← Granjas
       </Link>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {f.images[0] ? (
-            <img src={`/uploads/${f.images[0].path}`} alt="" className="h-10 w-10 rounded object-cover" />
+            <img src={`/uploads/${f.images[0].path}`} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
           ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded bg-base text-slate-600">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-base text-slate-600">
               <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current" aria-hidden="true">
                 <path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm1 2v10h14V7H5Zm2 8 3.5-4.5 2.5 3 3-4L18 15H7Z" />
               </svg>
@@ -200,8 +203,9 @@ export default function GranjaDetail() {
           <h1 className="font-mono text-2xl text-gold">{f.name}</h1>
           {f.metadata.manual && <span className="rounded bg-base px-2 py-0.5 text-xs text-cyan">Manual</span>}
           {f.metadata.hidden && <span className="rounded bg-base px-2 py-0.5 text-xs text-slate-400">Oculta</span>}
+          {f.metadata.off && <span className="rounded bg-base px-2 py-0.5 text-xs text-slate-400">Apagada</span>}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={startEditConfig} className="rounded border border-border px-3 py-1.5 text-sm text-cyan hover:bg-cyan/10">
             Editar configuración
           </button>
@@ -251,6 +255,11 @@ export default function GranjaDetail() {
                 label="Granja manual (no 24/7) — no marcar como caída por falta de producción"
               />
               <Checkbox checked={hidden} onChange={setHidden} label="Ocultar de /granjas" />
+              <Checkbox
+                checked={off}
+                onChange={setOff}
+                label="Granja apagada"
+              />
               <div className="space-y-1">
                 <div className="text-xs text-slate-400">Tasas esperadas (ítem por hora)</div>
                 {expectedRates.map((row, i) => (

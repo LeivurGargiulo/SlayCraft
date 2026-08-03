@@ -30,7 +30,9 @@ export default function MultiSelect<T extends string | number>({
     function updatePosition() {
       const rect = buttonRef.current?.getBoundingClientRect();
       if (!rect) return;
-      setPosition({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 192) });
+      const width = Math.max(rect.width, 192);
+      const left = Math.min(rect.left, window.innerWidth - Math.min(width, window.innerWidth - 16) - 8);
+      setPosition({ top: rect.bottom + 4, left: Math.max(8, left), width });
     }
     updatePosition();
     window.addEventListener('scroll', updatePosition, true);
@@ -73,7 +75,7 @@ export default function MultiSelect<T extends string | number>({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.12 }}
-              style={{ position: 'fixed', top: position.top, left: position.left, width: position.width }}
+              style={{ position: 'fixed', top: position.top, left: position.left, width: position.width, maxWidth: 'calc(100vw - 16px)' }}
               className="z-[60] max-h-72 min-w-max overflow-hidden rounded border border-border bg-panel shadow-lg"
             >
               {searchable && (

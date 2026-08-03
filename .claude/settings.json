@@ -5,7 +5,6 @@
       "Bash(docker compose ps*)",
       "Bash(docker compose logs*)",
       "Bash(npm test*)",
-      "Bash(task-master models)",
       "Bash(/home/leivur/.claude/plugins/cache/claude-plugins-official/superpowers/6.2.0/skills/subagent-driven-development/scripts/review-package *)",
       "Bash(bash /home/leivur/.claude/plugins/cache/claude-plugins-official/superpowers/6.2.0/skills/subagent-driven-development/scripts/review-package *)",
       "Bash(/home/leivur/.claude/plugins/cache/claude-plugins-official/superpowers/6.2.0/skills/subagent-driven-development/scripts/task-brief *)",
@@ -21,10 +20,7 @@
       "mcp__serena__read_memory",
       "mcp__plugin_context7_context7__resolve-library-id",
       "mcp__plugin_context7_context7__query-docs",
-      "mcp__sequential-thinking__sequentialthinking",
-      "mcp__task-master-ai__get_task",
-      "mcp__task-master-ai__get_tasks",
-      "mcp__task-master-ai__next_task"
+      "mcp__sequential-thinking__sequentialthinking"
     ]
   }
 }

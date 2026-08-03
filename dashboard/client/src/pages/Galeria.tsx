@@ -25,13 +25,13 @@ export default function Galeria() {
     <div className="space-y-4">
       <h1 className="font-mono text-2xl text-gold">Galería</h1>
 
-      <div className="flex items-center gap-2 rounded-lg border border-border bg-panel p-4">
+      <div className="flex flex-col gap-2 rounded-lg border border-border bg-panel p-4 sm:flex-row sm:items-center">
         <FileUploadButton ref={fileInput} />
         <input
           value={captionDraft}
           onChange={(e) => setCaptionDraft(e.target.value)}
           placeholder="Descripción (opcional)"
-          className="flex-1 rounded border border-border bg-base px-3 py-2"
+          className="rounded border border-border bg-base px-3 py-2 sm:flex-1"
         />
         <button onClick={onUpload} className="rounded bg-gold px-3 py-2 text-sm font-medium text-base hover:opacity-90">
           Subir imagen

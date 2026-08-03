@@ -21,7 +21,7 @@ export default function Proyectos() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="font-mono text-2xl text-gold">Proyectos</h1>
         <button onClick={() => setModalOpen(true)} className="rounded bg-gold px-3 py-2 text-sm font-medium text-base hover:opacity-90">
           + Nuevo proyecto

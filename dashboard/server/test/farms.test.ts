@@ -16,7 +16,7 @@ test('GET /api/farms merges MCFarmManager data with dashboard metadata', async (
   assert.equal(res.statusCode, 200);
   const body = res.json();
   assert.equal(body.farms[0].id, 'iron');
-  assert.deepEqual(body.farms[0].metadata, { notes: 'necesita mas cofres', tags: ['prioridad', 'hierro'], coordinates: null, expected_rates: {}, manual: false, hidden: false });
+  assert.deepEqual(body.farms[0].metadata, { notes: 'necesita mas cofres', tags: ['prioridad', 'hierro'], coordinates: null, expected_rates: {}, manual: false, hidden: false, off: false });
 });
 
 test('GET /api/farms returns 502 when MCFarmManager is unreachable', async (t) => {

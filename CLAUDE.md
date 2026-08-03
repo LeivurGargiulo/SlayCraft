@@ -7,6 +7,24 @@ Fabric Minecraft server runtime lives outside the repo at `/home/leivur/mcserver
 
 mineflayer bot abandoned (too complex, insufficient time/tokens); archived to `_archive/mineflayer`.
 
+## Before exploring: serena + graphify are already primed
+
+This repo has a persistent serena project (symbol index + memories under `.serena/`) and a
+graphify knowledge graph (`graphify-out/graph.json`, 822 nodes / 54 communities as of last
+build). Both exist to stop agents from cold-grepping the whole repo every run:
+
+- New session / new subagent on this repo → call `mcp__serena__read_memory` for `core` first
+  (references the other memories: `tech_stack`, `suggested_commands`, `conventions`,
+  `task_completion`). Cheaper and more reliable than re-deriving repo structure via grep.
+- Whole-repo/cross-service question (mod ↔ dashboard, architecture, "why does X exist") →
+  `graphify query "<question>"` against the existing graph before ad hoc grepping across
+  all three modules. Do not rebuild the graph unless files changed — use `--update`.
+- Symbol-level lookup (find definition/references of one function/class) → serena's
+  `find_symbol` / `find_referencing_symbols`, not full-file reads.
+- When dispatching subagents (e.g. `subagent-driven-development` task fan-out): brief each
+  agent to read the relevant serena memory / graphify community first instead of leaving it
+  to explore cold — this is the main lever for keeping a 10+ task batch cheap.
+
 ## Skill map
 
 Recurring task types in this repo and which skill covers them — check this before defaulting to ad-hoc work:

@@ -17,7 +17,7 @@ export default function Sidebar() {
   const location = useLocation();
 
   return (
-    <aside className="flex w-full flex-row overflow-x-auto border-b border-border bg-panel sm:sticky sm:top-0 sm:h-screen sm:w-52 sm:flex-col sm:overflow-visible sm:border-b-0 sm:border-r">
+    <aside className="sticky top-0 z-30 flex w-full flex-row overflow-x-auto border-b border-border bg-panel sm:h-screen sm:w-52 sm:flex-col sm:overflow-visible sm:border-b-0 sm:border-r">
       <div className="px-4 py-5 font-mono text-lg text-gold">SlayCraft</div>
       <nav className="flex flex-1 gap-1 px-2 sm:flex-col sm:gap-0 sm:space-y-1">
         {links.map((l) => {

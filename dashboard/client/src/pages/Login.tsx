@@ -18,8 +18,8 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-base">
-      <form onSubmit={onSubmit} className="w-80 rounded-lg border border-border bg-panel p-6">
+    <div className="flex min-h-screen items-center justify-center bg-base p-4">
+      <form onSubmit={onSubmit} className="w-full max-w-80 rounded-lg border border-border bg-panel p-6">
         <h1 className="mb-4 font-mono text-xl text-gold">SlayCraft</h1>
         <label className="mb-1 block text-sm text-slate-400">Contraseña</label>
         <input

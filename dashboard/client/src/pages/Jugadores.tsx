@@ -72,18 +72,18 @@ export default function Jugadores() {
       <h1 className="font-mono text-2xl text-gold">Jugadores</h1>
 
       <Card>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Nombre de Minecraft"
-            className="rounded border border-border bg-base px-3 py-2"
+            className="rounded border border-border bg-base px-3 py-2 sm:w-auto"
           />
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Nota (opcional)"
-            className="flex-1 rounded border border-border bg-base px-3 py-2"
+            className="rounded border border-border bg-base px-3 py-2 sm:flex-1"
           />
           <button onClick={onCreate} className="rounded bg-gold px-3 py-2 text-sm font-medium text-base hover:opacity-90">
             Agregar

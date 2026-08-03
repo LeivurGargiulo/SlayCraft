@@ -58,7 +58,7 @@ export interface FarmSummary {
   chunkLoaded: boolean;
   occupantCount: number;
   online: boolean;
-  metadata: { notes: string | null; tags: string[]; coordinates: string | null; expected_rates: Record<string, number>; manual: boolean; hidden: boolean };
+  metadata: { notes: string | null; tags: string[]; coordinates: string | null; expected_rates: Record<string, number>; manual: boolean; hidden: boolean; off: boolean };
   images: FarmImage[];
 }
 

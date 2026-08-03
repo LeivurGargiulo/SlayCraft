@@ -101,9 +101,9 @@ export default function Tareas() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="font-mono text-2xl text-gold">Tareas</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded border border-border">
             <button
               type="button"
@@ -133,7 +133,7 @@ export default function Tareas() {
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setStatusFilter('all')}
           className={`rounded px-3 py-1 text-sm ${statusFilter === 'all' ? 'bg-gold text-base' : 'bg-panel text-slate-300'}`}
@@ -196,16 +196,16 @@ export default function Tareas() {
       <div className="space-y-2">
         {visible.map((t) => (
           <Card key={t.id}>
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
                 <div className="font-medium">{t.title}</div>
-                <div className="mt-1 flex gap-2 text-xs text-slate-400">
+                <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">
                   <StatusBadge status={t.status} />
                   <PriorityBadge priority={t.priority} />
                   {t.due_date && <span>Vence: {t.due_date}</span>}
                   {t.assignees.length > 0 && <span>Asignada a: {t.assignees.map((a) => a.minecraft_name).join(', ')}</span>}
                 </div>
-                <div className="mt-1 flex gap-2">
+                <div className="mt-1 flex flex-wrap gap-2">
                   {t.farm_id && (
                     <Link
                       to={`/granjas/${t.farm_id}`}
@@ -224,7 +224,7 @@ export default function Tareas() {
                   )}
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {mode === 'edit' ? (
                   <Select
                     value={t.status}

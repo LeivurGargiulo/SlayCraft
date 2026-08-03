@@ -18,7 +18,10 @@ export default function Overview() {
   );
 
   const flaggedFarms = (farms.data?.farms ?? []).filter(
-    (f) => (!f.metadata.manual && !f.online) || (f.storageCapacity > 0 && f.storageItemCount > 0.9 * f.storageCapacity)
+    (f) =>
+      !f.metadata.hidden &&
+      !f.metadata.off &&
+      ((!f.metadata.manual && !f.online) || (f.storageCapacity > 0 && f.storageItemCount > 0.9 * f.storageCapacity))
   );
   const healthyFarmCount = (farms.data?.farms.length ?? 0) - flaggedFarms.length;
 

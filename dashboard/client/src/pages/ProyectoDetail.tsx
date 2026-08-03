@@ -40,11 +40,11 @@ export default function ProyectoDetail() {
       <Link to="/proyectos" className="text-sm text-cyan hover:underline">
         ← Proyectos
       </Link>
-      <div className="flex items-center justify-between">
-        <h1 className="font-mono text-2xl text-gold">{project.name}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="min-w-0 break-words font-mono text-2xl text-gold">{project.name}</h1>
         <button
           onClick={() => setDeleteModalOpen(true)}
-          className="text-sm text-status-blocked hover:underline"
+          className="shrink-0 text-sm text-status-blocked hover:underline"
         >
           Eliminar proyecto
         </button>

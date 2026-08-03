@@ -45,6 +45,7 @@ export default function Select<T extends string | number>({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.12 }}
+            style={{ maxWidth: 'calc(100vw - 16px)' }}
             className="absolute z-20 mt-1 max-h-72 w-full min-w-max overflow-hidden rounded border border-border bg-panel shadow-lg"
           >
             {searchable && (
