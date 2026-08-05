@@ -159,3 +159,12 @@ export interface PerformanceHistorySample {
   tps: number;
   meanTickTimeMs: number;
 }
+
+export interface SearchResult {
+  farmId: string;
+  farmName: string;
+  storageId: string;
+  storageLabel: string;
+  itemId: string;
+  count: number;
+}

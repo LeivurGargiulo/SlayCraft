@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useFarms, useCreateFarm, useUpdateFarmMetadata } from '../api/hooks';
+import { useFarms, useCreateFarm, useUpdateFarmMetadata, useSearch } from '../api/hooks';
 import type { FarmSummary } from '../api/types';
 import Card from '../components/Card';
 import Modal from '../components/Modal';
@@ -40,6 +40,8 @@ export default function Granjas() {
   const [y, setY] = useState('64');
   const [z, setZ] = useState('0');
   const [entityScanRadius, setEntityScanRadius] = useState('16');
+  const [searchTerm, setSearchTerm] = useState('');
+  const search = useSearch(searchTerm);
 
   async function onCreate() {
     if (!id.trim() || !name.trim()) return;
@@ -93,6 +95,33 @@ export default function Granjas() {
           </button>
         </div>
       </div>
+      <Card>
+        <h2 className="mb-2 font-mono text-slate-200">Buscar en almacenamiento</h2>
+        <input
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Buscar ítem (ej. diamond)"
+          className="w-full rounded border border-border bg-base px-3 py-2"
+        />
+        {searchTerm.trim() && (
+          <div className="mt-3 space-y-1">
+            {(search.data?.results.length ?? 0) === 0 ? (
+              <p className="text-sm text-slate-500">Sin resultados.</p>
+            ) : (
+              search.data!.results.map((r, i) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <Link to={`/granjas/${r.farmId}`} className="text-cyan hover:underline">
+                    {r.farmName} · {r.storageLabel}
+                  </Link>
+                  <span className="font-mono text-slate-400">
+                    {r.itemId.replace(/^minecraft:/, '')} × {r.count}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </Card>
       {(['encendida', 'rota', 'apagada'] as const).map((category) => {
         const categoryFarms = farms.data!.farms.filter(
           (f) => (showHidden || !f.metadata.hidden) && categorize(f) === category

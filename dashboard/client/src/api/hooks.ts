@@ -3,7 +3,7 @@ import { apiFetch } from './client';
 import type {
   Task, TaskInput, Subtask, Player, FarmSummary, FarmDetail, FarmHistorySample,
   LivePlayer, Performance, Project, ProjectImage, GalleryImage, FarmImage, FarmConfig, Actividad, Alert,
-  PlayerSession, PerformanceHistorySample,
+  PlayerSession, PerformanceHistorySample, SearchResult,
 } from './types';
 
 // --- auth ---
@@ -330,5 +330,12 @@ export function usePerformanceHistory(range: string) {
     queryKey: ['performance', 'history', range],
     queryFn: () => apiFetch<{ range: string; samples: PerformanceHistorySample[] }>(`/performance/history?range=${range}`),
     refetchInterval: 30_000,
+  });
+}
+export function useSearch(item: string) {
+  return useQuery({
+    queryKey: ['search', item],
+    queryFn: () => apiFetch<{ results: SearchResult[] }>(`/search?item=${encodeURIComponent(item)}`),
+    enabled: item.trim().length > 0,
   });
 }
