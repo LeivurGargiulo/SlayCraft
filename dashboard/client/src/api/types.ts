@@ -148,3 +148,8 @@ export interface Alert {
   message: string;
   createdAt: string;
 }
+
+export interface PlayerSession {
+  joinedAt: string;
+  leftAt: string | null;
+}

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { usePlayers, useCreatePlayer, useUpdatePlayer, useDeletePlayer, useLivePlayers } from '../api/hooks';
+import { usePlayers, useCreatePlayer, useUpdatePlayer, useDeletePlayer, useLivePlayers, usePlayerSessions } from '../api/hooks';
 import type { Actividad, Player } from '../api/types';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
 import PlayerSkin from '../components/PlayerSkin';
 import Select from '../components/Select';
 import ConfirmModal from '../components/ConfirmModal';
+import SessionChart from '../components/SessionChart';
 
 const ACTIVIDAD_ORDER: Actividad[] = ['activo', 'ocasional', 'inactivo'];
 const ACTIVIDAD_LABELS: Record<Actividad, string> = {
@@ -24,6 +25,8 @@ export default function Jugadores() {
   const [name, setName] = useState('');
   const [note, setNote] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+  const [sessionPlayer, setSessionPlayer] = useState<string | null>(null);
+  const sessions = usePlayerSessions(sessionPlayer ?? '', '7d');
 
   const liveNames = new Set((live.data?.players ?? []).map((p) => p.name));
   const allPlayers = players.data?.players ?? [];
@@ -62,6 +65,9 @@ export default function Jugadores() {
         />
         <button onClick={() => setDeleteTarget(p.id)} className="text-sm text-status-blocked hover:underline">
           Eliminar
+        </button>
+        <button onClick={() => setSessionPlayer(p.minecraft_name)} className="text-sm text-cyan hover:underline">
+          Historial
         </button>
       </Card>
     );
@@ -117,6 +123,18 @@ export default function Jugadores() {
       })}
 
       {allPlayers.length === 0 && <p className="text-sm text-slate-500">No hay jugadores registrados.</p>}
+
+      {sessionPlayer && (
+        <Card>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-mono text-slate-200">Conexión de {sessionPlayer} (7 días)</h2>
+            <button onClick={() => setSessionPlayer(null)} className="text-sm text-slate-400 hover:underline">
+              Cerrar
+            </button>
+          </div>
+          {sessions.data ? <SessionChart sessions={sessions.data.sessions} /> : <p className="text-sm text-slate-500">Cargando…</p>}
+        </Card>
+      )}
 
       <ConfirmModal
         open={deleteTarget !== null}

@@ -3,6 +3,7 @@ import { apiFetch } from './client';
 import type {
   Task, TaskInput, Subtask, Player, FarmSummary, FarmDetail, FarmHistorySample,
   LivePlayer, Performance, Project, ProjectImage, GalleryImage, FarmImage, FarmConfig, Actividad, Alert,
+  PlayerSession,
 } from './types';
 
 // --- auth ---
@@ -313,5 +314,14 @@ export function useDismissAlert() {
   return useMutation({
     mutationFn: (id: number) => apiFetch<{ ok: true }>(`/alerts/${id}/dismiss`, { method: 'POST' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['alerts'] }),
+  });
+}
+export function usePlayerSessions(name: string, range: string) {
+  return useQuery({
+    queryKey: ['players', name, 'sessions', range],
+    queryFn: () => apiFetch<{ playerName: string; range: string; sessions: PlayerSession[] }>(
+      `/players/${encodeURIComponent(name)}/sessions?range=${range}`
+    ),
+    enabled: !!name,
   });
 }
