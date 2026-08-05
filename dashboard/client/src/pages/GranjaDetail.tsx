@@ -115,6 +115,7 @@ export default function GranjaDetail() {
   const [manual, setManual] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [off, setOff] = useState(false);
+  const [offReason, setOffReason] = useState('');
   const [expectedRates, setExpectedRates] = useState<Array<{ itemId: string; rate: string }>>([]);
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -132,6 +133,7 @@ export default function GranjaDetail() {
     setManual(f.metadata.manual);
     setHidden(f.metadata.hidden);
     setOff(f.metadata.off);
+    setOffReason(f.metadata.off_reason ?? '');
     setEditingMeta(true);
   }
 
@@ -148,6 +150,7 @@ export default function GranjaDetail() {
       manual,
       hidden,
       off,
+      off_reason: offReason || null,
     });
     setEditingMeta(false);
   }
@@ -263,6 +266,14 @@ export default function GranjaDetail() {
                 onChange={setOff}
                 label="Granja apagada"
               />
+              {off && (
+                <input
+                  value={offReason}
+                  onChange={(e) => setOffReason(e.target.value)}
+                  placeholder="Motivo (opcional)"
+                  className="w-full rounded border border-border bg-base px-2 py-1 text-sm"
+                />
+              )}
               <div className="space-y-1">
                 <div className="text-xs text-slate-400">Tasas esperadas (ítem por hora)</div>
                 {expectedRates.map((row, i) => (

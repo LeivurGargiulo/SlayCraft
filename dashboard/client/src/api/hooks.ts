@@ -165,6 +165,7 @@ export function useUpdateFarmMetadata() {
       manual,
       hidden,
       off,
+      off_reason,
     }: {
       id: string;
       notes?: string | null;
@@ -174,7 +175,8 @@ export function useUpdateFarmMetadata() {
       manual?: boolean;
       hidden?: boolean;
       off?: boolean;
-    }) => apiFetch(`/farms/${id}/metadata`, { method: 'PATCH', body: JSON.stringify({ notes, tags, coordinates, expected_rates, manual, hidden, off }) }),
+      off_reason?: string | null;
+    }) => apiFetch(`/farms/${id}/metadata`, { method: 'PATCH', body: JSON.stringify({ notes, tags, coordinates, expected_rates, manual, hidden, off, off_reason }) }),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['farms'] });
       qc.invalidateQueries({ queryKey: ['farms', vars.id] });
