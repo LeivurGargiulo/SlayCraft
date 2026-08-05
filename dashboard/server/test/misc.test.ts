@@ -55,3 +55,17 @@ test('GET /api/performance/history proxies range param', async (t) => {
   assert.equal(res.statusCode, 200);
   assert.equal(res.json().range, '7d');
 });
+
+test('GET /api/search proxies the item query', async (t) => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  const fetchMock = mock.method(globalThis, 'fetch', async (url: string) => {
+    assert.ok(url.includes('/search?item=diamond'));
+    return new Response(JSON.stringify({ results: [{ farmId: 'iron', farmName: 'Iron Farm', storageId: 'main-chest', storageLabel: 'Cofre principal', itemId: 'minecraft:diamond', count: 12 }] }), { status: 200 });
+  });
+  t.after(() => fetchMock.mock.restore());
+
+  const res = await app.inject({ method: 'GET', url: '/api/search?item=diamond', headers: { cookie } });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.json().results[0].itemId, 'minecraft:diamond');
+});

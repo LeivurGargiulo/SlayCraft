@@ -26,6 +26,16 @@ export function registerMiscRoutes(app: FastifyInstance) {
     }
   });
 
+  app.get('/api/search', async (req, reply) => {
+    const { item } = req.query as { item?: string };
+    try {
+      return await mcfmFetch(`/search?item=${encodeURIComponent(item ?? '')}`);
+    } catch (err) {
+      if (err instanceof McfmError) return reply.code(502).send({ error: err.message });
+      throw err;
+    }
+  });
+
   app.get('/api/alerts', proxy('/alerts'));
 
   app.post('/api/alerts/:id/dismiss', async (req, reply) => {
