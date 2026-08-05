@@ -270,3 +270,9 @@ test('migration: subtask_assignees FK corrupted to subtasks_old is self-healed, 
     fs.rmSync(tmpDir, { recursive: true });
   }
 });
+
+test('openDb adds off_reason column to farm_metadata if missing', () => {
+  const db = openDb(':memory:');
+  const columns = db.prepare('PRAGMA table_info(farm_metadata)').all() as Array<{ name: string }>;
+  assert.ok(columns.some((c) => c.name === 'off_reason'));
+});
