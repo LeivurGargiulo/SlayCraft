@@ -8,6 +8,7 @@ import {
   useDeleteFarmImage,
   useDeleteFarm,
   useUpdateFarmConfig,
+  useTasks,
 } from '../api/hooks';
 import Card from '../components/Card';
 import ImageZoom from '../components/ImageZoom';
@@ -17,6 +18,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import Checkbox from '../components/Checkbox';
 import Select, { type SelectOption } from '../components/Select';
 import HistoryChart from '../components/HistoryChart';
+import StatusBadge from '../components/StatusBadge';
 import type { StorageItem, FarmDetail as FarmDetailType } from '../api/types';
 
 const DIMENSIONS = [
@@ -96,6 +98,7 @@ export default function GranjaDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const farm = useFarm(id!);
+  const relatedTasks = useTasks(id);
   const [historyRange, setHistoryRange] = useState<'1h' | '24h' | '7d'>('24h');
   const history = useFarmHistory(id!, historyRange);
   const rateHistory = useFarmHistory(id!, '1h');
@@ -436,6 +439,24 @@ export default function GranjaDetail() {
           <Select value={historyRange} onChange={setHistoryRange} options={HISTORY_RANGES} className="w-32" />
         </div>
         {history.data ? <HistoryChart samples={history.data.samples} /> : <p className="text-sm text-slate-500">Cargando…</p>}
+      </Card>
+
+      <Card>
+        <h2 className="mb-2 font-mono text-slate-200">Tareas relacionadas</h2>
+        {(relatedTasks.data?.tasks.length ?? 0) === 0 ? (
+          <p className="text-sm text-slate-500">Sin tareas vinculadas a esta granja.</p>
+        ) : (
+          <div className="space-y-2">
+            {relatedTasks.data!.tasks.map((t) => (
+              <div key={t.id} className="flex items-center justify-between text-sm">
+                <Link to="/tareas" className="text-cyan hover:underline">
+                  {t.title}
+                </Link>
+                <StatusBadge status={t.status} />
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Card>

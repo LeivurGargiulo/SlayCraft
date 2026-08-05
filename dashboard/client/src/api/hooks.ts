@@ -25,10 +25,10 @@ export function useLogout() {
 }
 
 // --- tasks ---
-export function useTasks() {
+export function useTasks(farmId?: string) {
   return useQuery({
-    queryKey: ['tasks'],
-    queryFn: () => apiFetch<{ tasks: Task[] }>('/tasks'),
+    queryKey: ['tasks', farmId ?? 'all'],
+    queryFn: () => apiFetch<{ tasks: Task[] }>(farmId ? `/tasks?farm_id=${encodeURIComponent(farmId)}` : '/tasks'),
     refetchInterval: 15_000,
   });
 }
