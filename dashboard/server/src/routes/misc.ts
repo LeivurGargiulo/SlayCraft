@@ -15,4 +15,19 @@ export function registerMiscRoutes(app: FastifyInstance) {
   app.get('/api/world', proxy('/world'));
   app.get('/api/performance', proxy('/performance'));
   app.get('/api/status', proxy('/status'));
+
+  app.get('/api/alerts', proxy('/alerts'));
+
+  app.post('/api/alerts/:id/dismiss', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    try {
+      return await mcfmFetch(`/alerts/${encodeURIComponent(id)}/dismiss`, { method: 'POST' });
+    } catch (err) {
+      if (err instanceof McfmError) {
+        const code = err.status === 404 ? 404 : 502;
+        return reply.code(code).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
 }
