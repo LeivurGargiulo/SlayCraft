@@ -17,6 +17,7 @@ import carpet.api.settings.Rule;
 import carpet.api.settings.RuleCategory;
 import carpet.api.settings.SettingsManager;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.mcfarmmanager.mod.alerts.AlertChecker;
 import net.mcfarmmanager.mod.alerts.SqliteAlertStore;
 import net.mcfarmmanager.mod.data.RealFarmDataProvider;
@@ -24,7 +25,10 @@ import net.mcfarmmanager.mod.history.FarmSampler;
 import net.mcfarmmanager.mod.history.SqliteHistoryStore;
 import net.mcfarmmanager.mod.http.MCFarmManagerHttpServer;
 import net.mcfarmmanager.mod.server.RealServerDataProvider;
+import net.mcfarmmanager.mod.sessions.PlayerSessionTracker;
+import net.mcfarmmanager.mod.sessions.SqlitePlayerSessionStore;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
 
 import java.io.IOException;
@@ -44,10 +48,13 @@ public final class MCFarmManagerExtension implements CarpetExtension {
     private static volatile FarmSampler activeSampler;
     private static final AtomicBoolean ALERT_TICK_LISTENER_REGISTERED = new AtomicBoolean();
     private static volatile AlertChecker activeAlertChecker;
+    private static final AtomicBoolean SESSION_LISTENERS_REGISTERED = new AtomicBoolean();
+    private static volatile PlayerSessionTracker activeSessionTracker;
 
     private MCFarmManagerHttpServer httpServer;
     private SqliteHistoryStore historyStore;
     private SqliteAlertStore alertStore;
+    private SqlitePlayerSessionStore sessionStore;
 
     public static class Settings {
         @Rule(categories = RuleCategory.FEATURE)
@@ -168,12 +175,54 @@ public final class MCFarmManagerExtension implements CarpetExtension {
             });
         }
 
+        try {
+            Path sessionsDbFile = server.getWorldPath(LevelResource.ROOT).resolve("mcfarmmanager/sessions.sqlite");
+            Files.createDirectories(sessionsDbFile.getParent());
+            sessionStore = new SqlitePlayerSessionStore(sessionsDbFile);
+        } catch (IOException e) {
+            MCFarmManagerMod.LOGGER.error("Failed to open MCFarmManager session store: {}", e.getMessage());
+            sessionStore = null;
+            return;
+        }
+
+        PlayerSessionTracker sessionTracker = new PlayerSessionTracker(sessionStore,
+                () -> Settings.mcfarmmanagerSampleIntervalMinutes);
+        sessionTracker.closeDanglingSessionsFromPreviousRun();
+        activeSessionTracker = sessionTracker;
+        if (SESSION_LISTENERS_REGISTERED.compareAndSet(false, true)) {
+            ServerTickEvents.END_SERVER_TICK.register(s -> {
+                PlayerSessionTracker tracker = activeSessionTracker;
+                if (tracker != null) {
+                    tracker.onEndTick();
+                }
+            });
+            ServerPlayConnectionEvents.JOIN.register((handler, sender, srv) -> {
+                PlayerSessionTracker tracker = activeSessionTracker;
+                if (tracker == null) {
+                    return;
+                }
+                ServerPlayer player = handler.getPlayer();
+                tracker.onPlayerJoin(player.getGameProfile().name(),
+                        player instanceof carpet.patches.EntityPlayerMPFake, System.currentTimeMillis());
+            });
+            ServerPlayConnectionEvents.DISCONNECT.register((handler, srv) -> {
+                PlayerSessionTracker tracker = activeSessionTracker;
+                if (tracker == null) {
+                    return;
+                }
+                ServerPlayer player = handler.getPlayer();
+                tracker.onPlayerDisconnect(player.getGameProfile().name(),
+                        player instanceof carpet.patches.EntityPlayerMPFake, System.currentTimeMillis());
+            });
+        }
+
         httpServer = new MCFarmManagerHttpServer(
                 MCFarmManagerMod::farms,
                 farmData,
                 new RealServerDataProvider(() -> CarpetServer.minecraft_server),
                 historyStore,
                 alertStore,
+                sessionStore,
                 Settings.mcfarmmanagerHttpPort,
                 Settings.mcfarmmanagerHttpBindAddress);
         try {
@@ -190,6 +239,7 @@ public final class MCFarmManagerExtension implements CarpetExtension {
     public void onServerClosed(MinecraftServer server) {
         activeSampler = null;
         activeAlertChecker = null;
+        activeSessionTracker = null;
         if (httpServer != null) {
             httpServer.stop();
             httpServer = null;
@@ -201,6 +251,10 @@ public final class MCFarmManagerExtension implements CarpetExtension {
         if (alertStore != null) {
             alertStore.close();
             alertStore = null;
+        }
+        if (sessionStore != null) {
+            sessionStore.close();
+            sessionStore = null;
         }
     }
 }
