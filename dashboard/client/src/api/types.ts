@@ -140,3 +140,11 @@ export interface GalleryImage {
   caption: string | null;
   created_at: string;
 }
+
+export interface Alert {
+  id: number;
+  farmId: string;
+  type: string;
+  message: string;
+  createdAt: string;
+}

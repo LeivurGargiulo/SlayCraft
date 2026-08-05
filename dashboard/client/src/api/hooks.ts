@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from './client';
 import type {
   Task, TaskInput, Subtask, Player, FarmSummary, FarmDetail, FarmHistorySample,
-  LivePlayer, Performance, Project, ProjectImage, GalleryImage, FarmImage, FarmConfig, Actividad,
+  LivePlayer, Performance, Project, ProjectImage, GalleryImage, FarmImage, FarmConfig, Actividad, Alert,
 } from './types';
 
 // --- auth ---
@@ -297,5 +297,21 @@ export function useDeleteGalleryImage() {
   return useMutation({
     mutationFn: (id: number) => apiFetch<void>(`/gallery/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['gallery'] }),
+  });
+}
+
+// --- alerts ---
+export function useAlerts() {
+  return useQuery({
+    queryKey: ['alerts'],
+    queryFn: () => apiFetch<{ alerts: Alert[] }>('/alerts'),
+    refetchInterval: 30_000,
+  });
+}
+export function useDismissAlert() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => apiFetch<{ ok: true }>(`/alerts/${id}/dismiss`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['alerts'] }),
   });
 }
