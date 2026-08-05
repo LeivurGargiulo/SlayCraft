@@ -153,3 +153,9 @@ export interface PlayerSession {
   joinedAt: string;
   leftAt: string | null;
 }
+
+export interface PerformanceHistorySample {
+  sampledAt: string;
+  tps: number;
+  meanTickTimeMs: number;
+}

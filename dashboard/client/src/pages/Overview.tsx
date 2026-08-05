@@ -1,9 +1,10 @@
 // dashboard/client/src/pages/Overview.tsx
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useTasks, useUpdateTask, useFarms, useLivePlayers, usePerformance } from '../api/hooks';
+import { useTasks, useUpdateTask, useFarms, useLivePlayers, usePerformance, usePerformanceHistory } from '../api/hooks';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
+import PerformanceChart from '../components/PerformanceChart';
 import { fadeUp, staggerContainer } from '../lib/motion';
 import { useAnimatedNumber } from '../lib/useAnimatedNumber';
 
@@ -13,6 +14,7 @@ export default function Overview() {
   const farms = useFarms();
   const livePlayers = useLivePlayers();
   const performance = usePerformance();
+  const performanceHistory = usePerformanceHistory('24h');
 
   const needsAttention = (tasks.data?.tasks ?? []).filter(
     (t) => t.status !== 'done' && t.priority === 'high'
@@ -91,6 +93,17 @@ export default function Overview() {
           </Card>
         </motion.div>
       </motion.div>
+
+      <section>
+        <h2 className="mb-2 font-mono text-lg text-slate-200">TPS del servidor (24h)</h2>
+        <Card>
+          {performanceHistory.data ? (
+            <PerformanceChart samples={performanceHistory.data.samples} />
+          ) : (
+            <p className="text-sm text-slate-500">Cargando…</p>
+          )}
+        </Card>
+      </section>
 
       <section>
         <h2 className="mb-2 font-mono text-lg text-slate-200">Tareas que necesitan atención</h2>
