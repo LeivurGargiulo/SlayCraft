@@ -214,3 +214,17 @@ test('GET /api/tasks returns tasks sorted by priority (high, med, low), then by 
   assert.ok(highEarlyIdx < highLateIdx, 'earlier due_date should come before later due_date within same priority');
   assert.ok(highLateIdx < highNoDueIdx, 'tasks with a due_date should come before tasks with no due_date within same priority');
 });
+
+test('GET /api/tasks?farm_id filters to that farm only', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+
+  await app.inject({ method: 'POST', url: '/api/tasks', headers: { cookie }, payload: { title: 'Reabastecer hierro', farm_id: 'iron' } });
+  await app.inject({ method: 'POST', url: '/api/tasks', headers: { cookie }, payload: { title: 'Sin granja' } });
+  await app.inject({ method: 'POST', url: '/api/tasks', headers: { cookie }, payload: { title: 'Reabastecer oro', farm_id: 'gold' } });
+
+  const res = await app.inject({ method: 'GET', url: '/api/tasks?farm_id=iron', headers: { cookie } });
+  assert.equal(res.statusCode, 200);
+  const titles = res.json().tasks.map((t: { title: string }) => t.title);
+  assert.deepEqual(titles, ['Reabastecer hierro']);
+});

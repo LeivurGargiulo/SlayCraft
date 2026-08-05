@@ -72,15 +72,19 @@ function setAssignees(db: Database.Database, taskId: number, playerIds: number[]
 }
 
 export function registerTaskRoutes(app: FastifyInstance, db: Database.Database) {
-  app.get('/api/tasks', async () => {
+  app.get('/api/tasks', async (req) => {
     db.prepare(
       `UPDATE tasks SET archived = 1
        WHERE status = 'done' AND archived = 0 AND completed_at IS NOT NULL
          AND completed_at <= datetime('now', '-3 days')`
     ).run();
-    const tasks = db
-      .prepare(`SELECT * FROM tasks WHERE archived = 0 ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'med' THEN 1 WHEN 'low' THEN 2 END, (due_date IS NULL), due_date ASC`)
-      .all() as TaskRow[];
+    const { farm_id } = req.query as { farm_id?: string };
+    const orderBy = `ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'med' THEN 1 WHEN 'low' THEN 2 END, (due_date IS NULL), due_date ASC`;
+    const tasks = (
+      farm_id
+        ? db.prepare(`SELECT * FROM tasks WHERE archived = 0 AND farm_id = ? ${orderBy}`).all(farm_id)
+        : db.prepare(`SELECT * FROM tasks WHERE archived = 0 ${orderBy}`).all()
+    ) as TaskRow[];
     return { tasks: tasks.map((t) => hydrateTask(db, t)) };
   });
 
