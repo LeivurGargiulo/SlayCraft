@@ -112,7 +112,7 @@ public final class SqlitePlayerSessionStore implements PlayerSessionStore {
     @Override
     public List<PlayerSession> query(String playerName, long sinceMillis) {
         String sql = "SELECT player_name, joined_at, left_at FROM player_sessions "
-                + "WHERE player_name = ? AND joined_at >= ? ORDER BY joined_at ASC";
+                + "WHERE player_name = ? AND (joined_at >= ? OR left_at IS NULL) ORDER BY joined_at ASC";
         List<PlayerSession> results = new ArrayList<>();
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, playerName);

@@ -44,7 +44,7 @@ public final class FakePlayerSessionStore implements PlayerSessionStore {
     @Override
     public List<PlayerSession> query(String playerName, long sinceMillis) {
         return sessions.stream()
-                .filter(s -> s.playerName().equals(playerName) && s.joinedAtMillis() >= sinceMillis)
+                .filter(s -> s.playerName().equals(playerName) && (s.joinedAtMillis() >= sinceMillis || s.leftAtMillis() == null))
                 .toList();
     }
 }

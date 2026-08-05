@@ -74,7 +74,10 @@ public final class AlertChecker {
     }
 
     private void checkProduction(FarmConfig farm, long now) {
-        List<HistorySample> samples = historyStore.query(farm.id(), 0L);
+        // Bounded lookback instead of the full retained history - only the last STALL_SAMPLE_COUNT
+        // samples matter here, and the +1 buffer absorbs sampler tick jitter.
+        long sinceMillis = now - (STALL_SAMPLE_COUNT + 1) * sampleIntervalMinutes.getAsInt() * 60_000L;
+        List<HistorySample> samples = historyStore.query(farm.id(), sinceMillis);
         if (samples.size() < STALL_SAMPLE_COUNT) {
             return;
         }
