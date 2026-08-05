@@ -22,6 +22,7 @@ class MCFarmManagerHttpServerTest {
     private FakeHistoryStore historyStore;
     private net.mcfarmmanager.mod.alerts.FakeAlertStore alertStore;
     private net.mcfarmmanager.mod.sessions.FakePlayerSessionStore sessionStore;
+    private net.mcfarmmanager.mod.history.FakePerformanceHistoryStore performanceHistoryStore;
     private int port;
     private HttpClient client = HttpClient.newHttpClient();
 
@@ -36,8 +37,9 @@ class MCFarmManagerHttpServerTest {
         historyStore = new FakeHistoryStore();
         alertStore = new net.mcfarmmanager.mod.alerts.FakeAlertStore();
         sessionStore = new net.mcfarmmanager.mod.sessions.FakePlayerSessionStore();
+        performanceHistoryStore = new net.mcfarmmanager.mod.history.FakePerformanceHistoryStore();
         server = new MCFarmManagerHttpServer(this::farms, new FakeFarmDataProvider(), new FakeServerDataProvider(),
-                historyStore, alertStore, sessionStore, 0, "127.0.0.1");
+                historyStore, alertStore, sessionStore, performanceHistoryStore, 0, "127.0.0.1");
         server.start();
         port = server.boundPort();
     }
@@ -197,5 +199,21 @@ class MCFarmManagerHttpServerTest {
         HttpResponse<String> response = get("/players");
         assertEquals(200, response.statusCode());
         assertTrue(response.body().contains("\"name\":\"leivur\""));
+    }
+
+    @Test
+    void performanceHistoryEndpointReturnsSamples() throws Exception {
+        performanceHistoryStore.recordSample(System.currentTimeMillis(), 19.5, 51.2);
+        HttpResponse<String> response = get("/performance/history");
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("\"tps\":19.5"));
+        assertTrue(response.body().contains("\"range\":\"24h\""));
+    }
+
+    @Test
+    void performanceEndpointStillWorksAfterRouterConversion() throws Exception {
+        HttpResponse<String> response = get("/performance");
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("\"tps\":19.87"));
     }
 }

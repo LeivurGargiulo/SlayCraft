@@ -13,6 +13,8 @@ import net.mcfarmmanager.mod.config.FarmConfig;
 import net.mcfarmmanager.mod.data.FarmDataProvider;
 import net.mcfarmmanager.mod.history.HistorySample;
 import net.mcfarmmanager.mod.history.HistoryStore;
+import net.mcfarmmanager.mod.history.PerformanceHistoryStore;
+import net.mcfarmmanager.mod.history.PerformanceSample;
 import net.mcfarmmanager.mod.server.ServerDataProvider;
 import net.mcfarmmanager.mod.sessions.PlayerSession;
 import net.mcfarmmanager.mod.sessions.PlayerSessionStore;
@@ -43,6 +45,7 @@ public final class MCFarmManagerHttpServer {
     private final HistoryStore historyStore;
     private final AlertStore alertStore;
     private final PlayerSessionStore sessionStore;
+    private final PerformanceHistoryStore performanceHistoryStore;
     private final int port;
     private final String bindAddress;
     private final Gson gson = new GsonBuilder().serializeNulls().create();
@@ -51,13 +54,15 @@ public final class MCFarmManagerHttpServer {
 
     public MCFarmManagerHttpServer(java.util.function.Supplier<List<FarmConfig>> farmsSupplier, FarmDataProvider farmData,
                                     ServerDataProvider serverData, HistoryStore historyStore, AlertStore alertStore,
-                                    PlayerSessionStore sessionStore, int port, String bindAddress) {
+                                    PlayerSessionStore sessionStore, PerformanceHistoryStore performanceHistoryStore,
+                                    int port, String bindAddress) {
         this.farmsSupplier = farmsSupplier;
         this.farmData = farmData;
         this.serverData = serverData;
         this.historyStore = historyStore;
         this.alertStore = alertStore;
         this.sessionStore = sessionStore;
+        this.performanceHistoryStore = performanceHistoryStore;
         this.port = port;
         this.bindAddress = bindAddress;
     }
@@ -68,7 +73,7 @@ public final class MCFarmManagerHttpServer {
         addContext("/farms", this::handleFarms, hostFilter);
         addContext("/players", this::handlePlayers, hostFilter);
         addContext("/world", exchange -> respondJson(exchange, Map.of("dimensions", serverData.worldState())), hostFilter);
-        addContext("/performance", exchange -> respondJson(exchange, serverData.performance()), hostFilter);
+        addContext("/performance", this::handlePerformance, hostFilter);
         addContext("/status", exchange -> respondJson(exchange, serverData.status(farmsSupplier.get().size())), hostFilter);
         addContext("/alerts", this::handleAlerts, hostFilter);
         httpServer.setExecutor(Executors.newCachedThreadPool());
@@ -192,6 +197,28 @@ public final class MCFarmManagerHttpServer {
         return new PlayerSessionView(
                 Instant.ofEpochMilli(session.joinedAtMillis()).toString(),
                 leftAt != null ? Instant.ofEpochMilli(leftAt).toString() : null);
+    }
+
+    private void handlePerformance(HttpExchange exchange) throws IOException {
+        String path = exchange.getRequestURI().getPath();
+        if (path.equals("/performance")) {
+            respondJson(exchange, serverData.performance());
+            return;
+        }
+        if (path.equals("/performance/history")) {
+            String range = queryParam(exchange, "range", "24h");
+            List<PerformanceSampleView> views = performanceHistoryStore.query(rangeSinceMillis(range)).stream()
+                    .map(MCFarmManagerHttpServer::toPerformanceView)
+                    .toList();
+            respondJson(exchange, new PerformanceHistoryResponse(range, views));
+            return;
+        }
+        respondJson(exchange, 404, Map.of("error", "not found"));
+    }
+
+    private static PerformanceSampleView toPerformanceView(PerformanceSample sample) {
+        return new PerformanceSampleView(Instant.ofEpochMilli(sample.sampledAtMillis()).toString(),
+                sample.tps(), sample.meanTickTimeMs());
     }
 
     private void handleFarms(HttpExchange exchange) throws IOException {
