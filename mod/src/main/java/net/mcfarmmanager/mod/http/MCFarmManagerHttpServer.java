@@ -14,6 +14,8 @@ import net.mcfarmmanager.mod.data.FarmDataProvider;
 import net.mcfarmmanager.mod.history.HistorySample;
 import net.mcfarmmanager.mod.history.HistoryStore;
 import net.mcfarmmanager.mod.server.ServerDataProvider;
+import net.mcfarmmanager.mod.sessions.PlayerSession;
+import net.mcfarmmanager.mod.sessions.PlayerSessionStore;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -40,6 +42,7 @@ public final class MCFarmManagerHttpServer {
     private final ServerDataProvider serverData;
     private final HistoryStore historyStore;
     private final AlertStore alertStore;
+    private final PlayerSessionStore sessionStore;
     private final int port;
     private final String bindAddress;
     private final Gson gson = new GsonBuilder().serializeNulls().create();
@@ -48,12 +51,13 @@ public final class MCFarmManagerHttpServer {
 
     public MCFarmManagerHttpServer(java.util.function.Supplier<List<FarmConfig>> farmsSupplier, FarmDataProvider farmData,
                                     ServerDataProvider serverData, HistoryStore historyStore, AlertStore alertStore,
-                                    int port, String bindAddress) {
+                                    PlayerSessionStore sessionStore, int port, String bindAddress) {
         this.farmsSupplier = farmsSupplier;
         this.farmData = farmData;
         this.serverData = serverData;
         this.historyStore = historyStore;
         this.alertStore = alertStore;
+        this.sessionStore = sessionStore;
         this.port = port;
         this.bindAddress = bindAddress;
     }
@@ -62,7 +66,7 @@ public final class MCFarmManagerHttpServer {
         httpServer = HttpServer.create(new InetSocketAddress(bindAddress, port), 0);
         Filter hostFilter = hostValidationFilter();
         addContext("/farms", this::handleFarms, hostFilter);
-        addContext("/players", exchange -> respondJson(exchange, Map.of("players", serverData.players())), hostFilter);
+        addContext("/players", this::handlePlayers, hostFilter);
         addContext("/world", exchange -> respondJson(exchange, Map.of("dimensions", serverData.worldState())), hostFilter);
         addContext("/performance", exchange -> respondJson(exchange, serverData.performance()), hostFilter);
         addContext("/status", exchange -> respondJson(exchange, serverData.status(farmsSupplier.get().size())), hostFilter);
@@ -162,6 +166,32 @@ public final class MCFarmManagerHttpServer {
 
     public int boundPort() {
         return httpServer.getAddress().getPort();
+    }
+
+    private void handlePlayers(HttpExchange exchange) throws IOException {
+        String path = exchange.getRequestURI().getPath();
+        if (path.equals("/players")) {
+            respondJson(exchange, Map.of("players", serverData.players()));
+            return;
+        }
+        String remainder = path.substring("/players/".length());
+        if (remainder.endsWith("/sessions")) {
+            String name = remainder.substring(0, remainder.length() - "/sessions".length());
+            String range = queryParam(exchange, "range", "24h");
+            List<PlayerSessionView> views = sessionStore.query(name, rangeSinceMillis(range)).stream()
+                    .map(MCFarmManagerHttpServer::toSessionView)
+                    .toList();
+            respondJson(exchange, new PlayerSessionsResponse(name, range, views));
+            return;
+        }
+        respondJson(exchange, 404, Map.of("error", "not found"));
+    }
+
+    private static PlayerSessionView toSessionView(PlayerSession session) {
+        Long leftAt = session.leftAtMillis();
+        return new PlayerSessionView(
+                Instant.ofEpochMilli(session.joinedAtMillis()).toString(),
+                leftAt != null ? Instant.ofEpochMilli(leftAt).toString() : null);
     }
 
     private void handleFarms(HttpExchange exchange) throws IOException {

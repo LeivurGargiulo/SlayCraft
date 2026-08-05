@@ -21,6 +21,7 @@ class MCFarmManagerHttpServerTest {
     private MCFarmManagerHttpServer server;
     private FakeHistoryStore historyStore;
     private net.mcfarmmanager.mod.alerts.FakeAlertStore alertStore;
+    private net.mcfarmmanager.mod.sessions.FakePlayerSessionStore sessionStore;
     private int port;
     private HttpClient client = HttpClient.newHttpClient();
 
@@ -34,8 +35,9 @@ class MCFarmManagerHttpServerTest {
     void start() throws IOException {
         historyStore = new FakeHistoryStore();
         alertStore = new net.mcfarmmanager.mod.alerts.FakeAlertStore();
+        sessionStore = new net.mcfarmmanager.mod.sessions.FakePlayerSessionStore();
         server = new MCFarmManagerHttpServer(this::farms, new FakeFarmDataProvider(), new FakeServerDataProvider(),
-                historyStore, alertStore, 0, "127.0.0.1");
+                historyStore, alertStore, sessionStore, 0, "127.0.0.1");
         server.start();
         port = server.boundPort();
     }
@@ -178,5 +180,22 @@ class MCFarmManagerHttpServerTest {
         HttpRequest delete = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/farms/iron"))
                 .DELETE().build();
         assertEquals(403, client.send(delete, HttpResponse.BodyHandlers.ofString()).statusCode());
+    }
+
+    @Test
+    void playerSessionsEndpointReturnsClosedAndOpenSessions() throws Exception {
+        sessionStore.openSession("leivur", System.currentTimeMillis() - 60_000);
+        sessionStore.closeSession("leivur", System.currentTimeMillis());
+        HttpResponse<String> response = get("/players/leivur/sessions");
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("\"playerName\":\"leivur\""));
+        assertTrue(response.body().contains("\"joinedAt\""));
+    }
+
+    @Test
+    void playersListEndpointStillWorksAfterRouterConversion() throws Exception {
+        HttpResponse<String> response = get("/players");
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("\"name\":\"leivur\""));
     }
 }
