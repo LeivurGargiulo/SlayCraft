@@ -17,6 +17,8 @@ import carpet.api.settings.Rule;
 import carpet.api.settings.RuleCategory;
 import carpet.api.settings.SettingsManager;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.mcfarmmanager.mod.alerts.AlertChecker;
+import net.mcfarmmanager.mod.alerts.SqliteAlertStore;
 import net.mcfarmmanager.mod.data.RealFarmDataProvider;
 import net.mcfarmmanager.mod.history.FarmSampler;
 import net.mcfarmmanager.mod.history.SqliteHistoryStore;
@@ -40,9 +42,12 @@ public final class MCFarmManagerExtension implements CarpetExtension {
     // out on each onServerLoaded/onServerClosed instead of re-registering a new listener.
     private static final AtomicBoolean TICK_LISTENER_REGISTERED = new AtomicBoolean();
     private static volatile FarmSampler activeSampler;
+    private static final AtomicBoolean ALERT_TICK_LISTENER_REGISTERED = new AtomicBoolean();
+    private static volatile AlertChecker activeAlertChecker;
 
     private MCFarmManagerHttpServer httpServer;
     private SqliteHistoryStore historyStore;
+    private SqliteAlertStore alertStore;
 
     public static class Settings {
         @Rule(categories = RuleCategory.FEATURE)
@@ -142,11 +147,33 @@ public final class MCFarmManagerExtension implements CarpetExtension {
             });
         }
 
+        try {
+            Path alertsDbFile = server.getWorldPath(LevelResource.ROOT).resolve("mcfarmmanager/alerts.sqlite");
+            Files.createDirectories(alertsDbFile.getParent());
+            alertStore = new SqliteAlertStore(alertsDbFile);
+        } catch (IOException e) {
+            MCFarmManagerMod.LOGGER.error("Failed to open MCFarmManager alert store: {}", e.getMessage());
+            alertStore = null;
+            return;
+        }
+
+        activeAlertChecker = new AlertChecker(MCFarmManagerMod::farms, farmData, historyStore, alertStore,
+                () -> Settings.mcfarmmanagerSampleIntervalMinutes);
+        if (ALERT_TICK_LISTENER_REGISTERED.compareAndSet(false, true)) {
+            ServerTickEvents.END_SERVER_TICK.register(s -> {
+                AlertChecker checker = activeAlertChecker;
+                if (checker != null) {
+                    checker.onEndTick();
+                }
+            });
+        }
+
         httpServer = new MCFarmManagerHttpServer(
                 MCFarmManagerMod::farms,
                 farmData,
                 new RealServerDataProvider(() -> CarpetServer.minecraft_server),
                 historyStore,
+                alertStore,
                 Settings.mcfarmmanagerHttpPort,
                 Settings.mcfarmmanagerHttpBindAddress);
         try {
@@ -162,6 +189,7 @@ public final class MCFarmManagerExtension implements CarpetExtension {
     @Override
     public void onServerClosed(MinecraftServer server) {
         activeSampler = null;
+        activeAlertChecker = null;
         if (httpServer != null) {
             httpServer.stop();
             httpServer = null;
@@ -169,6 +197,10 @@ public final class MCFarmManagerExtension implements CarpetExtension {
         if (historyStore != null) {
             historyStore.close();
             historyStore = null;
+        }
+        if (alertStore != null) {
+            alertStore.close();
+            alertStore = null;
         }
     }
 }

@@ -7,6 +7,8 @@ import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import net.mcfarmmanager.mod.alerts.Alert;
+import net.mcfarmmanager.mod.alerts.AlertStore;
 import net.mcfarmmanager.mod.config.FarmConfig;
 import net.mcfarmmanager.mod.data.FarmDataProvider;
 import net.mcfarmmanager.mod.history.HistorySample;
@@ -37,6 +39,7 @@ public final class MCFarmManagerHttpServer {
     private final FarmDataProvider farmData;
     private final ServerDataProvider serverData;
     private final HistoryStore historyStore;
+    private final AlertStore alertStore;
     private final int port;
     private final String bindAddress;
     private final Gson gson = new GsonBuilder().serializeNulls().create();
@@ -44,12 +47,13 @@ public final class MCFarmManagerHttpServer {
     private HttpServer httpServer;
 
     public MCFarmManagerHttpServer(java.util.function.Supplier<List<FarmConfig>> farmsSupplier, FarmDataProvider farmData,
-                                    ServerDataProvider serverData, HistoryStore historyStore,
+                                    ServerDataProvider serverData, HistoryStore historyStore, AlertStore alertStore,
                                     int port, String bindAddress) {
         this.farmsSupplier = farmsSupplier;
         this.farmData = farmData;
         this.serverData = serverData;
         this.historyStore = historyStore;
+        this.alertStore = alertStore;
         this.port = port;
         this.bindAddress = bindAddress;
     }
@@ -62,6 +66,7 @@ public final class MCFarmManagerHttpServer {
         addContext("/world", exchange -> respondJson(exchange, Map.of("dimensions", serverData.worldState())), hostFilter);
         addContext("/performance", exchange -> respondJson(exchange, serverData.performance()), hostFilter);
         addContext("/status", exchange -> respondJson(exchange, serverData.status(farmsSupplier.get().size())), hostFilter);
+        addContext("/alerts", this::handleAlerts, hostFilter);
         httpServer.setExecutor(Executors.newCachedThreadPool());
         httpServer.start();
     }
@@ -313,6 +318,39 @@ public final class MCFarmManagerHttpServer {
                 .map(MCFarmManagerHttpServer::toView)
                 .toList();
         respondJson(exchange, new FarmHistoryResponse(id, range, samples));
+    }
+
+    private void handleAlerts(HttpExchange exchange) throws IOException {
+        String path = exchange.getRequestURI().getPath();
+        if (path.equals("/alerts")) {
+            List<AlertView> views = alertStore.listActive().stream().map(MCFarmManagerHttpServer::toAlertView).toList();
+            respondJson(exchange, Map.of("alerts", views));
+            return;
+        }
+        String remainder = path.substring("/alerts/".length());
+        if (remainder.endsWith("/dismiss") && exchange.getRequestMethod().equals("POST")) {
+            String idPart = remainder.substring(0, remainder.length() - "/dismiss".length());
+            long id;
+            try {
+                id = Long.parseLong(idPart);
+            } catch (NumberFormatException e) {
+                respondJson(exchange, 400, Map.of("error", "invalid alert id: " + idPart));
+                return;
+            }
+            boolean dismissed = alertStore.dismiss(id, System.currentTimeMillis());
+            if (!dismissed) {
+                respondJson(exchange, 404, Map.of("error", "unknown or already dismissed alert: " + id));
+                return;
+            }
+            respondJson(exchange, Map.of("ok", true));
+            return;
+        }
+        respondJson(exchange, 404, Map.of("error", "not found"));
+    }
+
+    private static AlertView toAlertView(Alert alert) {
+        return new AlertView(alert.id(), alert.farmId(), alert.type(), alert.message(),
+                Instant.ofEpochMilli(alert.createdAtMillis()).toString());
     }
 
     private FarmConfig findFarm(String id) {

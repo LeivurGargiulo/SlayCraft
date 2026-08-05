@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class MCFarmManagerHttpServerTest {
     private MCFarmManagerHttpServer server;
     private FakeHistoryStore historyStore;
+    private net.mcfarmmanager.mod.alerts.FakeAlertStore alertStore;
     private int port;
     private HttpClient client = HttpClient.newHttpClient();
 
@@ -32,8 +33,9 @@ class MCFarmManagerHttpServerTest {
     @BeforeEach
     void start() throws IOException {
         historyStore = new FakeHistoryStore();
+        alertStore = new net.mcfarmmanager.mod.alerts.FakeAlertStore();
         server = new MCFarmManagerHttpServer(this::farms, new FakeFarmDataProvider(), new FakeServerDataProvider(),
-                historyStore, 0, "127.0.0.1");
+                historyStore, alertStore, 0, "127.0.0.1");
         server.start();
         port = server.boundPort();
     }
@@ -133,6 +135,33 @@ class MCFarmManagerHttpServerTest {
         HttpResponse<String> response = get("/status");
         assertEquals(200, response.statusCode());
         assertTrue(response.body().contains("\"farmCount\":1"));
+    }
+
+    @Test
+    void alertsEndpointListsActiveAlerts() throws Exception {
+        alertStore.createIfNotActive("iron", "storage_full", "Cofre principal al 95%", System.currentTimeMillis());
+        HttpResponse<String> response = get("/alerts");
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("\"farmId\":\"iron\""));
+        assertTrue(response.body().contains("\"type\":\"storage_full\""));
+    }
+
+    @Test
+    void dismissAlertReturns200AndRemovesFromActiveList() throws Exception {
+        alertStore.createIfNotActive("iron", "storage_full", "m", System.currentTimeMillis());
+        long id = alertStore.listActive().get(0).id();
+        HttpRequest post = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/alerts/" + id + "/dismiss"))
+                .POST(HttpRequest.BodyPublishers.noBody()).build();
+        HttpResponse<String> response = client.send(post, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode());
+        assertTrue(get("/alerts").body().contains("\"alerts\":[]"));
+    }
+
+    @Test
+    void dismissUnknownAlertReturns404() throws Exception {
+        HttpRequest post = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/alerts/999/dismiss"))
+                .POST(HttpRequest.BodyPublishers.noBody()).build();
+        assertEquals(404, client.send(post, HttpResponse.BodyHandlers.ofString()).statusCode());
     }
 
     @Test
