@@ -216,4 +216,35 @@ class MCFarmManagerHttpServerTest {
         assertEquals(200, response.statusCode());
         assertTrue(response.body().contains("\"tps\":19.87"));
     }
+
+    @Test
+    void searchEndpointFindsMatchingItemsAcrossFarms() throws Exception {
+        HttpResponse<String> response = get("/search?item=iron_ingot");
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("\"farmId\":\"iron\""));
+        assertTrue(response.body().contains("\"storageId\":\"main-chest\""));
+        // 1728 loose + 1000 inside the shulker box, aggregated into one row for this storage+item
+        assertTrue(response.body().contains("\"count\":2728"));
+    }
+
+    @Test
+    void searchEndpointIsCaseInsensitive() throws Exception {
+        HttpResponse<String> response = get("/search?item=IRON_INGOT");
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("\"itemId\":\"minecraft:iron_ingot\""));
+    }
+
+    @Test
+    void searchEndpointReturnsEmptyResultsForNoMatch() throws Exception {
+        HttpResponse<String> response = get("/search?item=diamond");
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("\"results\":[]"));
+    }
+
+    @Test
+    void searchEndpointReturnsEmptyResultsWithoutItemParam() throws Exception {
+        HttpResponse<String> response = get("/search");
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("\"results\":[]"));
+    }
 }

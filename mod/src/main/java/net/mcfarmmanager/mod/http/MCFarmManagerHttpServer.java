@@ -75,6 +75,7 @@ public final class MCFarmManagerHttpServer {
         addContext("/world", exchange -> respondJson(exchange, Map.of("dimensions", serverData.worldState())), hostFilter);
         addContext("/performance", this::handlePerformance, hostFilter);
         addContext("/status", exchange -> respondJson(exchange, serverData.status(farmsSupplier.get().size())), hostFilter);
+        addContext("/search", this::handleSearch, hostFilter);
         addContext("/alerts", this::handleAlerts, hostFilter);
         httpServer.setExecutor(Executors.newCachedThreadPool());
         httpServer.start();
@@ -362,6 +363,26 @@ public final class MCFarmManagerHttpServer {
             net.mcfarmmanager.mod.MCFarmManagerMod.setFarms(updated);
         }
         exchange.sendResponseHeaders(204, -1);
+    }
+
+    private void handleSearch(HttpExchange exchange) throws IOException {
+        String itemQuery = queryParam(exchange, "item", "").toLowerCase(Locale.ROOT);
+        List<SearchResult> results = new java.util.ArrayList<>();
+        if (!itemQuery.isBlank()) {
+            for (FarmConfig farm : farmsSupplier.get()) {
+                for (net.mcfarmmanager.mod.data.StorageInfo storage : farmData.storage(farm)) {
+                    Map<String, Integer> counts = storage.items().stream()
+                            .flatMap(net.mcfarmmanager.mod.data.ItemStackInfo::selfAndContents)
+                            .filter(item -> item.itemId().toLowerCase(Locale.ROOT).contains(itemQuery))
+                            .collect(java.util.stream.Collectors.groupingBy(
+                                    net.mcfarmmanager.mod.data.ItemStackInfo::itemId,
+                                    java.util.stream.Collectors.summingInt(net.mcfarmmanager.mod.data.ItemStackInfo::count)));
+                    counts.forEach((itemId, count) ->
+                            results.add(new SearchResult(farm.id(), farm.name(), storage.id(), storage.label(), itemId, count)));
+                }
+            }
+        }
+        respondJson(exchange, Map.of("results", results));
     }
 
     private void handleFarmHistory(HttpExchange exchange, String id) throws IOException {
