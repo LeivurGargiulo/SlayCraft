@@ -16,6 +16,16 @@ export function registerMiscRoutes(app: FastifyInstance) {
   app.get('/api/performance', proxy('/performance'));
   app.get('/api/status', proxy('/status'));
 
+  app.get('/api/performance/history', async (req, reply) => {
+    const { range } = req.query as { range?: string };
+    try {
+      return await mcfmFetch(`/performance/history?range=${encodeURIComponent(range ?? '24h')}`);
+    } catch (err) {
+      if (err instanceof McfmError) return reply.code(502).send({ error: err.message });
+      throw err;
+    }
+  });
+
   app.get('/api/alerts', proxy('/alerts'));
 
   app.post('/api/alerts/:id/dismiss', async (req, reply) => {

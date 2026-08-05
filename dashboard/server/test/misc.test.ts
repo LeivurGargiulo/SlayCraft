@@ -40,3 +40,18 @@ test('POST /api/alerts/:id/dismiss returns 404 when MCFarmManager reports 404', 
   const res = await app.inject({ method: 'POST', url: '/api/alerts/999/dismiss', headers: { cookie } });
   assert.equal(res.statusCode, 404);
 });
+
+test('GET /api/performance/history proxies range param', async (t) => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  const fetchMock = mock.method(globalThis, 'fetch', async (url: string) => {
+    assert.ok(url.includes('/performance/history'));
+    assert.ok(url.includes('range=7d'));
+    return new Response(JSON.stringify({ range: '7d', samples: [] }), { status: 200 });
+  });
+  t.after(() => fetchMock.mock.restore());
+
+  const res = await app.inject({ method: 'GET', url: '/api/performance/history?range=7d', headers: { cookie } });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.json().range, '7d');
+});
