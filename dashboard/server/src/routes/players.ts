@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
+import { mcfmFetch, McfmError } from '../mcfarmmanager.js';
 
 const ACTIVIDADES = ['activo', 'ocasional', 'inactivo'] as const;
 
@@ -44,5 +45,16 @@ export function registerPlayerRoutes(app: FastifyInstance, db: Database.Database
     db.prepare('DELETE FROM players WHERE id = ?').run(Number((req.params as { id: string }).id));
     reply.code(204);
     return null;
+  });
+
+  app.get('/api/players/:name/sessions', async (req, reply) => {
+    const { name } = req.params as { name: string };
+    const { range } = req.query as { range?: string };
+    try {
+      return await mcfmFetch(`/players/${encodeURIComponent(name)}/sessions?range=${encodeURIComponent(range ?? '24h')}`);
+    } catch (err) {
+      if (err instanceof McfmError) return reply.code(502).send({ error: err.message });
+      throw err;
+    }
   });
 }
