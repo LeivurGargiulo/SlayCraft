@@ -22,7 +22,9 @@ import net.mcfarmmanager.mod.alerts.AlertChecker;
 import net.mcfarmmanager.mod.alerts.SqliteAlertStore;
 import net.mcfarmmanager.mod.data.RealFarmDataProvider;
 import net.mcfarmmanager.mod.history.FarmSampler;
+import net.mcfarmmanager.mod.history.PerformanceSampler;
 import net.mcfarmmanager.mod.history.SqliteHistoryStore;
+import net.mcfarmmanager.mod.history.SqlitePerformanceHistoryStore;
 import net.mcfarmmanager.mod.http.MCFarmManagerHttpServer;
 import net.mcfarmmanager.mod.server.RealServerDataProvider;
 import net.mcfarmmanager.mod.sessions.PlayerSessionTracker;
@@ -50,11 +52,14 @@ public final class MCFarmManagerExtension implements CarpetExtension {
     private static volatile AlertChecker activeAlertChecker;
     private static final AtomicBoolean SESSION_LISTENERS_REGISTERED = new AtomicBoolean();
     private static volatile PlayerSessionTracker activeSessionTracker;
+    private static final AtomicBoolean PERFORMANCE_TICK_LISTENER_REGISTERED = new AtomicBoolean();
+    private static volatile PerformanceSampler activePerformanceSampler;
 
     private MCFarmManagerHttpServer httpServer;
     private SqliteHistoryStore historyStore;
     private SqliteAlertStore alertStore;
     private SqlitePlayerSessionStore sessionStore;
+    private SqlitePerformanceHistoryStore performanceHistoryStore;
 
     public static class Settings {
         @Rule(categories = RuleCategory.FEATURE)
@@ -216,13 +221,36 @@ public final class MCFarmManagerExtension implements CarpetExtension {
             });
         }
 
+        try {
+            Path performanceDbFile = server.getWorldPath(LevelResource.ROOT).resolve("mcfarmmanager/performance.sqlite");
+            Files.createDirectories(performanceDbFile.getParent());
+            performanceHistoryStore = new SqlitePerformanceHistoryStore(performanceDbFile);
+        } catch (IOException e) {
+            MCFarmManagerMod.LOGGER.error("Failed to open MCFarmManager performance history store: {}", e.getMessage());
+            performanceHistoryStore = null;
+            return;
+        }
+
+        RealServerDataProvider realServerData = new RealServerDataProvider(() -> CarpetServer.minecraft_server);
+        activePerformanceSampler = new PerformanceSampler(realServerData::performance, performanceHistoryStore,
+                () -> Settings.mcfarmmanagerSampleIntervalMinutes, () -> Settings.mcfarmmanagerHistoryRetentionDays);
+        if (PERFORMANCE_TICK_LISTENER_REGISTERED.compareAndSet(false, true)) {
+            ServerTickEvents.END_SERVER_TICK.register(s -> {
+                PerformanceSampler sampler = activePerformanceSampler;
+                if (sampler != null) {
+                    sampler.onEndTick();
+                }
+            });
+        }
+
         httpServer = new MCFarmManagerHttpServer(
                 MCFarmManagerMod::farms,
                 farmData,
-                new RealServerDataProvider(() -> CarpetServer.minecraft_server),
+                realServerData,
                 historyStore,
                 alertStore,
                 sessionStore,
+                performanceHistoryStore,
                 Settings.mcfarmmanagerHttpPort,
                 Settings.mcfarmmanagerHttpBindAddress);
         try {
@@ -240,6 +268,7 @@ public final class MCFarmManagerExtension implements CarpetExtension {
         activeSampler = null;
         activeAlertChecker = null;
         activeSessionTracker = null;
+        activePerformanceSampler = null;
         if (httpServer != null) {
             httpServer.stop();
             httpServer = null;
@@ -255,6 +284,10 @@ public final class MCFarmManagerExtension implements CarpetExtension {
         if (sessionStore != null) {
             sessionStore.close();
             sessionStore = null;
+        }
+        if (performanceHistoryStore != null) {
+            performanceHistoryStore.close();
+            performanceHistoryStore = null;
         }
     }
 }
