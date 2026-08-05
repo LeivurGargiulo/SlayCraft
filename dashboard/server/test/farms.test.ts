@@ -16,7 +16,7 @@ test('GET /api/farms merges MCFarmManager data with dashboard metadata', async (
   assert.equal(res.statusCode, 200);
   const body = res.json();
   assert.equal(body.farms[0].id, 'iron');
-  assert.deepEqual(body.farms[0].metadata, { notes: 'necesita mas cofres', tags: ['prioridad', 'hierro'], coordinates: null, expected_rates: {}, manual: false, hidden: false, off: false });
+  assert.deepEqual(body.farms[0].metadata, { notes: 'necesita mas cofres', tags: ['prioridad', 'hierro'], coordinates: null, expected_rates: {}, manual: false, hidden: false, off: false, off_reason: null });
 });
 
 test('GET /api/farms returns 502 when MCFarmManager is unreachable', async (t) => {
@@ -257,4 +257,63 @@ test('metadata manual defaults to false when unset', async () => {
     payload: { notes: 'sin toggle todavia' },
   });
   assert.equal(res.json().metadata.manual, false);
+});
+
+test('PATCH /api/farms/:id/metadata round-trips off_reason', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  const res = await app.inject({
+    method: 'PATCH',
+    url: '/api/farms/iron/metadata',
+    headers: { cookie },
+    payload: { off: true, off_reason: 'Sin hierro cerca, reubicar' },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.json().metadata.off_reason, 'Sin hierro cerca, reubicar');
+});
+
+test('turning a farm off auto-creates a 7-day reminder task linked to that farm', async (t) => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  const fetchMock = mock.method(globalThis, 'fetch', async () =>
+    new Response(JSON.stringify({ id: 'iron', name: 'Iron Farm' }), { status: 200 })
+  );
+  t.after(() => fetchMock.mock.restore());
+
+  const res = await app.inject({
+    method: 'PATCH',
+    url: '/api/farms/iron/metadata',
+    headers: { cookie },
+    payload: { off: true },
+  });
+  assert.equal(res.statusCode, 200);
+
+  const tasks = db.prepare('SELECT * FROM tasks WHERE farm_id = ?').all('iron') as Array<{ title: string; priority: string; status: string; due_date: string }>;
+  assert.equal(tasks.length, 1);
+  assert.equal(tasks[0].title, 'Revisar granja apagada: Iron Farm');
+  assert.equal(tasks[0].priority, 'med');
+  assert.equal(tasks[0].status, 'todo');
+  assert.ok(tasks[0].due_date);
+});
+
+test('turning an already-off farm off again does not create a duplicate reminder task', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  db.prepare('INSERT INTO farm_metadata (farm_id, off) VALUES (?, 1)').run('iron');
+
+  await app.inject({ method: 'PATCH', url: '/api/farms/iron/metadata', headers: { cookie }, payload: { off: true } });
+
+  const tasks = db.prepare('SELECT * FROM tasks WHERE farm_id = ?').all('iron');
+  assert.equal(tasks.length, 0);
+});
+
+test('turning a farm back on does not create a reminder task', async () => {
+  const { app, db } = makeApp();
+  const cookie = await loginAndGetCookie(app, db);
+  db.prepare('INSERT INTO farm_metadata (farm_id, off) VALUES (?, 1)').run('iron');
+
+  await app.inject({ method: 'PATCH', url: '/api/farms/iron/metadata', headers: { cookie }, payload: { off: false } });
+
+  const tasks = db.prepare('SELECT * FROM tasks WHERE farm_id = ?').all('iron');
+  assert.equal(tasks.length, 0);
 });

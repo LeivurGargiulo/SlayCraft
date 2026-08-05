@@ -71,6 +71,29 @@ function setAssignees(db: Database.Database, taskId: number, playerIds: number[]
   for (const playerId of playerIds) insert.run(taskId, playerId);
 }
 
+export function insertTask(db: Database.Database, input: unknown) {
+  const body = taskInput.parse(input);
+  const completed_at = body.status === 'done' ? sqlNow(db) : null;
+  const info = db
+    .prepare(
+      `INSERT INTO tasks (title, description, status, priority, due_date, farm_id, project_id, completed_at, archived)
+       VALUES (@title, @description, @status, @priority, @due_date, @farm_id, @project_id, @completed_at, @archived)`
+    )
+    .run({
+      title: body.title,
+      description: body.description ?? null,
+      status: body.status,
+      priority: body.priority,
+      due_date: body.due_date ?? null,
+      farm_id: body.farm_id ?? null,
+      project_id: body.project_id ?? null,
+      completed_at,
+      archived: 0,
+    });
+  setAssignees(db, Number(info.lastInsertRowid), body.assignee_ids);
+  return hydrateTask(db, db.prepare('SELECT * FROM tasks WHERE id = ?').get(info.lastInsertRowid) as TaskRow);
+}
+
 export function registerTaskRoutes(app: FastifyInstance, db: Database.Database) {
   app.get('/api/tasks', async (req) => {
     db.prepare(
@@ -96,27 +119,9 @@ export function registerTaskRoutes(app: FastifyInstance, db: Database.Database) 
   });
 
   app.post('/api/tasks', async (req, reply) => {
-    const body = taskInput.parse(req.body);
-    const completed_at = body.status === 'done' ? sqlNow(db) : null;
-    const info = db
-      .prepare(
-        `INSERT INTO tasks (title, description, status, priority, due_date, farm_id, project_id, completed_at, archived)
-         VALUES (@title, @description, @status, @priority, @due_date, @farm_id, @project_id, @completed_at, @archived)`
-      )
-      .run({
-        title: body.title,
-        description: body.description ?? null,
-        status: body.status,
-        priority: body.priority,
-        due_date: body.due_date ?? null,
-        farm_id: body.farm_id ?? null,
-        project_id: body.project_id ?? null,
-        completed_at,
-        archived: 0,
-      });
-    setAssignees(db, Number(info.lastInsertRowid), body.assignee_ids);
+    const task = insertTask(db, req.body);
     reply.code(201);
-    return hydrateTask(db, db.prepare('SELECT * FROM tasks WHERE id = ?').get(info.lastInsertRowid) as TaskRow);
+    return task;
   });
 
   app.patch('/api/tasks/:id', async (req, reply) => {

@@ -5,6 +5,7 @@ import type { FastifyInstance } from 'fastify';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import { mcfmFetch, McfmError } from '../mcfarmmanager.js';
+import { insertTask } from './tasks.js';
 
 const ALLOWED_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
 
@@ -17,10 +18,11 @@ interface FarmMetadataRow {
   manual: number;
   hidden: number;
   off: number;
+  off_reason: string | null;
 }
 
 function getMetadata(db: Database.Database, farmId: string) {
-  const row = db.prepare('SELECT notes, tags, coordinates, expected_rates, manual, hidden, off FROM farm_metadata WHERE farm_id = ?').get(farmId) as
+  const row = db.prepare('SELECT notes, tags, coordinates, expected_rates, manual, hidden, off, off_reason FROM farm_metadata WHERE farm_id = ?').get(farmId) as
     | FarmMetadataRow
     | undefined;
   return {
@@ -31,6 +33,7 @@ function getMetadata(db: Database.Database, farmId: string) {
     manual: !!row?.manual,
     hidden: !!row?.hidden,
     off: !!row?.off,
+    off_reason: row?.off_reason ?? null,
   };
 }
 
@@ -73,6 +76,7 @@ const metadataSchema = z.object({
   manual: z.boolean().optional(),
   hidden: z.boolean().optional(),
   off: z.boolean().optional(),
+  off_reason: z.string().nullable().optional(),
 });
 
 const positionSchema = z.object({ x: z.number().int(), y: z.number().int(), z: z.number().int() });
@@ -150,9 +154,10 @@ export function registerFarmRoutes(app: FastifyInstance, db: Database.Database, 
   app.patch('/api/farms/:id/metadata', async (req) => {
     const { id } = req.params as { id: string };
     const body = metadataSchema.parse(req.body);
+    const wasOff = getMetadata(db, id).off;
     db.prepare(
-      `INSERT INTO farm_metadata (farm_id, notes, tags, coordinates, expected_rates, manual, hidden, off) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(farm_id) DO UPDATE SET notes = excluded.notes, tags = excluded.tags, coordinates = excluded.coordinates, expected_rates = excluded.expected_rates, manual = excluded.manual, hidden = excluded.hidden, off = excluded.off`
+      `INSERT INTO farm_metadata (farm_id, notes, tags, coordinates, expected_rates, manual, hidden, off, off_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(farm_id) DO UPDATE SET notes = excluded.notes, tags = excluded.tags, coordinates = excluded.coordinates, expected_rates = excluded.expected_rates, manual = excluded.manual, hidden = excluded.hidden, off = excluded.off, off_reason = excluded.off_reason`
     ).run(
       id,
       body.notes ?? null,
@@ -161,8 +166,26 @@ export function registerFarmRoutes(app: FastifyInstance, db: Database.Database, 
       body.expected_rates ? JSON.stringify(body.expected_rates) : null,
       body.manual ? 1 : 0,
       body.hidden ? 1 : 0,
-      body.off ? 1 : 0
+      body.off ? 1 : 0,
+      body.off_reason ?? null
     );
+    if (body.off === true && !wasOff) {
+      let farmName = id;
+      try {
+        const farm = (await mcfmFetch(`/farms/${encodeURIComponent(id)}`)) as { name?: string };
+        farmName = farm.name ?? id;
+      } catch {
+        // MCFarmManager unreachable - still create the reminder with the farm id as its name.
+      }
+      const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      insertTask(db, {
+        title: `Revisar granja apagada: ${farmName}`,
+        due_date: dueDate,
+        farm_id: id,
+        status: 'todo',
+        priority: 'med',
+      });
+    }
     return { ok: true, metadata: getMetadata(db, id) };
   });
 
