@@ -1,6 +1,6 @@
 nyttlandmc.net.ar {
 	handle_path /map/* {
-		reverse_proxy mcserver:8080
+		reverse_proxy mcserver:25566
 	}
 	reverse_proxy client:80
 }
