@@ -6,6 +6,7 @@ import StatusBadge from '../components/StatusBadge';
 import PlayerSkin from '../components/PlayerSkin';
 import Select from '../components/Select';
 import ConfirmModal from '../components/ConfirmModal';
+import Modal from '../components/Modal';
 import SessionChart from '../components/SessionChart';
 
 const ACTIVIDAD_ORDER: Actividad[] = ['activo', 'ocasional', 'inactivo'];
@@ -124,17 +125,13 @@ export default function Jugadores() {
 
       {allPlayers.length === 0 && <p className="text-sm text-slate-500">No hay jugadores registrados.</p>}
 
-      {sessionPlayer && (
-        <Card>
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="font-mono text-slate-200">Conexión de {sessionPlayer} (7 días)</h2>
-            <button onClick={() => setSessionPlayer(null)} className="text-sm text-slate-400 hover:underline">
-              Cerrar
-            </button>
-          </div>
-          {sessions.data ? <SessionChart sessions={sessions.data.sessions} /> : <p className="text-sm text-slate-500">Cargando…</p>}
-        </Card>
-      )}
+      <Modal
+        open={sessionPlayer !== null}
+        onClose={() => setSessionPlayer(null)}
+        title={`Conexión de ${sessionPlayer} (7 días)`}
+      >
+        {sessions.data ? <SessionChart sessions={sessions.data.sessions} /> : <p className="text-sm text-slate-500">Cargando…</p>}
+      </Modal>
 
       <ConfirmModal
         open={deleteTarget !== null}
